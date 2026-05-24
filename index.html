@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shanmukha Fashions | Premium Clothing Shop</title>
+    <!-- Google Fonts for Luxury Aesthetic -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Core Style -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Global Luxury Top Bar -->
+    <div class="top-bar">
+        <p>Complimentary Express Shipping on Orders Over ₹150 &nbsp;•&nbsp; Discover Shanmukha Gold Membership</p>
+    </div>
+
+    <!-- Main Navigation Bar (Glassmorphic) -->
+    <header class="main-header">
+        <div class="header-container">
+            <!-- Brand Logo & Name -->
+            <div class="brand-logo-area" onclick="navigateTo('home')">
+                <img src="logo.png" alt="Shanmukha Fashions Logo" class="brand-logo">
+                <div class="brand-text">
+                    <span class="brand-name">SHANMUKHA</span>
+                    <span class="brand-sub">FASHIONS</span>
+                </div>
+            </div>
+
+            <!-- Amazon-inspired Luxury Search & Department Area -->
+            <div class="header-search-container">
+                <div class="department-dropdown">
+                    <select id="header-dept-select" onchange="handleHeaderDeptChange()">
+                        <option value="all">All Departments</option>
+                        <option value="mens">Menswear</option>
+                        <option value="womens">Ladieswear</option>
+                        <option value="kids">Kidswear</option>
+                    </select>
+                </div>
+                <div class="search-input-wrapper">
+                    <input type="text" id="search-input" placeholder="Search curated collections, items, styles..." oninput="handleSearch(this.value)">
+                    <button class="search-btn"><i data-lucide="search"></i></button>
+                </div>
+            </div>
+
+            <!-- Header Action Controls -->
+            <div class="header-actions">
+                <nav class="desktop-nav">
+                    <a href="#home" onclick="navigateTo('home')" class="nav-link active">Home</a>
+                    <a href="#shop" onclick="navigateTo('shop')" class="nav-link">Shop All</a>
+                    <a href="#story" onclick="navigateTo('story')" class="nav-link">Our Story</a>
+                    <a href="#login" id="login-nav-btn" onclick="openLoginModal()" class="nav-link" style="color: var(--color-orange);"><i data-lucide="user" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"></i>Login / Track Order</a>
+                </nav>
+                <div class="action-icons">
+                    <button class="icon-btn" onclick="toggleAdminPanel(true)" title="Owner Portal">
+                        <i data-lucide="lock"></i>
+                    </button>
+                    <button class="icon-btn" onclick="toggleSizeAdvisor(true)" title="Size Advisor">
+                        <i data-lucide="rulers"></i>
+                    </button>
+                    <button class="icon-btn" onclick="toggleWishlist(true)" title="Wishlist">
+                        <i data-lucide="heart" id="wishlist-btn-icon"></i>
+                        <span class="badge" id="wishlist-count">0</span>
+                    </button>
+                    <button class="icon-btn cart-toggle-btn" onclick="toggleCart(true)" title="Shopping Cart">
+                        <i data-lucide="shopping-bag"></i>
+                        <span class="badge" id="cart-count">0</span>
+                        <span class="cart-total-price" id="header-cart-total">₹0.00</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- App Content Wrapper -->
+    <main class="app-content">
+
+        <!-- HOME PAGE / LANDING -->
+        <section id="home-view" class="view-section active">
+            <!-- Immersive Parallax Hero Section -->
+            <div class="hero-section">
+                <div class="hero-overlay"></div>
+                <div class="hero-content">
+                    <h5 class="hero-subtitle">ELEVATED ESSENTIALS &bull; TIMELESS DESIGNS</h5>
+                    <h1 class="hero-title">Heritage Meets Elegance</h1>
+                    <p class="hero-description">Discover curated fine threads, bespoke linen, cashmere essentials, and timeless premium collections for Men, Women, and Kids.</p>
+                    <div class="hero-buttons">
+                        <button class="btn btn-primary" onclick="navigateTo('shop')">Explore Shop</button>
+                        <button class="btn btn-secondary" onclick="navigateTo('story')">Read Our Story</button>
+                    </div>
+                </div>
+                <div class="hero-arrow-down" onclick="scrollToCollections()">
+                    <i data-lucide="chevron-down"></i>
+                </div>
+            </div>
+
+            <!-- Curated Department Quick Navigation -->
+            <section id="collections-section" class="departments-quick">
+                <div class="section-header-centered">
+                    <h2>Shop By Department</h2>
+                    <p class="section-subtitle">Premium curation of high-end tailoring, seasonal wear, and lifestyle statements.</p>
+                </div>
+                <div class="departments-grid">
+                    <!-- Menswear Card -->
+                    <div class="department-card" onclick="filterDepartment('mens')">
+                        <div class="dept-image" style="background-image: url('https://images.unsplash.com/photo-1594938298603-c8148c4dae35?q=80&w=600&auto=format&fit=crop');"></div>
+                        <div class="dept-content-overlay">
+                            <h3>MENSWEAR</h3>
+                            <p>Refined Tailoring & Modern Classics</p>
+                            <span class="dept-link-btn">View Collection <i data-lucide="arrow-right"></i></span>
+                        </div>
+                    </div>
+                    <!-- Ladieswear Card -->
+                    <div class="department-card" onclick="filterDepartment('womens')">
+                        <div class="dept-image" style="background-image: url('https://images.unsplash.com/photo-1591047139829-d91aecb6caea?q=80&w=600&auto=format&fit=crop');"></div>
+                        <div class="dept-content-overlay">
+                            <h3>LADIESWEAR</h3>
+                            <p>Graceful Silks, Knitwear & Eveningwear</p>
+                            <span class="dept-link-btn">View Collection <i data-lucide="arrow-right"></i></span>
+                        </div>
+                    </div>
+                    <!-- Kidswear Card -->
+                    <div class="department-card" onclick="filterDepartment('kids')">
+                        <div class="dept-image" style="background-image: url('https://images.unsplash.com/photo-1621451537084-482c730e374a?q=80&w=600&auto=format&fit=crop');"></div>
+                        <div class="dept-content-overlay">
+                            <h3>KIDSWEAR</h3>
+                            <p>Luxurious Organic Cottons & Soft Knits</p>
+                            <span class="dept-link-btn">View Collection <i data-lucide="arrow-right"></i></span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Featured / New Arrivals Section -->
+            <section class="new-arrivals-home">
+                <div class="container">
+                    <div class="section-header-split">
+                        <div>
+                            <h2>Featured New Arrivals</h2>
+                            <p class="section-subtitle">Exquisite designs fresh off our boutique workspace.</p>
+                        </div>
+                        <button class="btn btn-outline" onclick="navigateTo('shop')">View Full Catalog <i data-lucide="arrow-right"></i></button>
+                    </div>
+                    <!-- Home Featured Grid -->
+                    <div class="products-grid" id="home-featured-grid">
+                        <!-- Dynamic items will load here -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Luxury Feature Banner -->
+            <section class="luxury-banner-section">
+                <div class="luxury-banner-content">
+                    <h2>Uncompromising Craftsmanship</h2>
+                    <p>Every piece in Shanmukha Fashions is carefully fabricated using ethical, sustainably sourced organic cashmeres, pure mulberry silks, and long-staple Egyptian cottons. Designed to withstand seasons and elevate daily wardrobes.</p>
+                    <div class="crafts-indicators">
+                        <div class="indicator">
+                            <span class="num">100%</span>
+                            <span class="lbl">Sustainably Sourced</span>
+                        </div>
+                        <div class="indicator">
+                            <span class="num">24h</span>
+                            <span class="lbl">Bespoke Tailoring Care</span>
+                        </div>
+                        <div class="indicator">
+                            <span class="num">Free</span>
+                            <span class="lbl">Lifetime Alterations</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </section>
+
+        <!-- CATALOG / SHOP ALL VIEW -->
+        <section id="shop-view" class="view-section">
+            <div class="shop-hero">
+                <h1>The Curated Catalog</h1>
+                <p>Browse the entire wardrobe from Shanmukha Fashions. Refined search filters engineered for absolute premium convenience.</p>
+            </div>
+            
+            <div class="shop-layout">
+                <!-- Sidebar Filters (Amazon-inspired but Luxury Styling) -->
+                <aside class="shop-sidebar">
+                    <div class="sidebar-header">
+                        <h3><i data-lucide="sliders-horizontal"></i> Filter Wardrobe</h3>
+                        <button class="clear-filters-btn" onclick="clearAllFilters()">Clear All</button>
+                    </div>
+
+                    <!-- Department Category Selector -->
+                    <div class="filter-group">
+                        <h4>Department</h4>
+                        <div class="filter-options">
+                            <label class="custom-radio">
+                                <input type="radio" name="dept-filter" value="all" checked onchange="handleFilterChange()">
+                                <span class="radio-mark"></span> All Apparel
+                            </label>
+                            <label class="custom-radio">
+                                <input type="radio" name="dept-filter" value="mens" onchange="handleFilterChange()">
+                                <span class="radio-mark"></span> Menswear
+                            </label>
+                            <label class="custom-radio">
+                                <input type="radio" name="dept-filter" value="womens" onchange="handleFilterChange()">
+                                <span class="radio-mark"></span> Ladieswear
+                            </label>
+                            <label class="custom-radio">
+                                <input type="radio" name="dept-filter" value="kids" onchange="handleFilterChange()">
+                                <span class="radio-mark"></span> Kidswear
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Clothes Category Type -->
+                    <div class="filter-group">
+                        <h4>Category</h4>
+                        <div class="filter-options" id="category-type-filters">
+                            <!-- Populated Dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Price Range Slider -->
+                    <div class="filter-group">
+                        <h4>Price Range</h4>
+                        <div class="price-slider-wrapper">
+                            <div class="price-display">
+                                <span id="price-min-val">₹0</span>
+                                <span>-</span>
+                                <span id="price-max-val">₹350</span>
+                            </div>
+                            <input type="range" id="price-range-input" min="0" max="350" value="350" step="10" oninput="handlePriceSlider(this.value)" onchange="handleFilterChange()">
+                            <div class="price-bounds">
+                                <span>₹0</span>
+                                <span>₹350</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sort Selection -->
+                    <div class="filter-group">
+                        <h4>Sort By</h4>
+                        <select class="custom-select" id="sort-select" onchange="handleFilterChange()">
+                            <option value="featured">Featured Arrivals</option>
+                            <option value="price-asc">Price: Low to High</option>
+                            <option value="price-desc">Price: High to Low</option>
+                        </select>
+                    </div>
+                </aside>
+
+                <!-- Catalog Grid Area -->
+                <div class="shop-main">
+                    <div class="catalog-header">
+                        <span class="results-count" id="catalog-count-label">Showing 12 items</span>
+                        <div class="active-filters-chips" id="active-chips">
+                            <!-- Dynamic chips loaded here -->
+                        </div>
+                    </div>
+
+                    <!-- Products Grid -->
+                    <div class="products-grid" id="catalog-products-grid">
+                        <!-- Dynamic items populated from JS -->
+                    </div>
+
+                    <!-- Empty State -->
+                    <div class="empty-state" id="catalog-empty-state">
+                        <i data-lucide="package-search"></i>
+                        <h3>No Garments Found</h3>
+                        <p>We couldn't find any items matching your selected criteria. Try adjusting your sidebar filters or clearing search filters.</p>
+                        <button class="btn btn-primary" onclick="clearAllFilters()">Clear All Filters</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- OUR STORY VIEW -->
+        <section id="story-view" class="view-section">
+            <div class="story-container">
+                <div class="story-header-img">
+                    <div class="story-header-overlay">
+                        <h1>Our Legacy & Promise</h1>
+                        <p>Shanmukha Fashions - Crafting Luxury Apparel Since 2012</p>
+                    </div>
+                </div>
+                <div class="story-content">
+                    <div class="story-block">
+                        <h2>The Essence of Shanmukha</h2>
+                        <p>Derived from the noble name meaning the "Six-Faceted" elegance, **Shanmukha Fashions** was founded on six core pillars of wardrobe luxury: **Purity of Material, Timeless Design, Masterful Tailoring, Comfort, Ethical Production, and Unmatched Care**.</p>
+                        <p>What started as a boutique design workshop for tailored menswear has blossomed into a global modern luxury e-commerce house, catering to sophisticated gentlemen, graceful women, and curated kidswear collections that reflect comfort and longevity.</p>
+                    </div>
+                    <div class="story-pillars-grid">
+                        <div class="pillar-card">
+                            <span class="pillar-number">I</span>
+                            <h3>Pure Material</h3>
+                            <p>We source fine silk, organic linen, cashmere, and high-staple Peruvian cottons directly from responsible farms.</p>
+                        </div>
+                        <div class="pillar-card">
+                            <span class="pillar-number">II</span>
+                            <h3>Artisan Cut</h3>
+                            <p>Every pattern is painstakingly drafted and sewn by master tailors with decades of experience in high-end apparel.</p>
+                        </div>
+                        <div class="pillar-card">
+                            <span class="pillar-number">III</span>
+                            <h3>Timeless Value</h3>
+                            <p>We bypass rapid fast-fashion trends in favor of tailored capsule silhouettes that look stunning for decades.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ==================== INTERACTIVE SLIDE-OUT DRAWER MODULES ==================== -->
+
+    <!-- Shopping Cart Drawer (Right Side) -->
+    <div class="drawer-overlay" id="cart-drawer-overlay" onclick="toggleCart(false)"></div>
+    <div class="drawer" id="cart-drawer">
+        <div class="drawer-header">
+            <h3><i data-lucide="shopping-bag"></i> Shopping Bag (<span id="cart-drawer-count">0</span>)</h3>
+            <button class="close-drawer-btn" onclick="toggleCart(false)"><i data-lucide="x"></i></button>
+        </div>
+        <div class="drawer-content" id="cart-items-container">
+            <!-- Dynamic Cart Items loaded here -->
+        </div>
+        <!-- Empty Cart Indicator -->
+        <div class="drawer-empty-state" id="cart-empty-state">
+            <i data-lucide="shopping-cart"></i>
+            <p>Your luxury shopping bag is currently empty.</p>
+            <button class="btn btn-primary" onclick="toggleCart(false); navigateTo('shop')">Explore Collections</button>
+        </div>
+        <!-- Cart Summary Footer -->
+        <div class="drawer-footer" id="cart-footer">
+            <div class="summary-line">
+                <span>Subtotal</span>
+                <span id="cart-subtotal">₹0.00</span>
+            </div>
+            <div class="summary-line">
+                <span>Estimated Taxes & Shipping</span>
+                <span class="free-badge">FREE</span>
+            </div>
+            <hr class="summary-divider">
+            <div class="summary-line total">
+                <span>Total Payment</span>
+                <span id="cart-total">₹0.00</span>
+            </div>
+            <button class="btn btn-primary checkout-btn" onclick="openCheckout()">
+                Proceed to Checkout <i data-lucide="arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Wishlist Drawer (Right Side) -->
+    <div class="drawer-overlay" id="wishlist-drawer-overlay" onclick="toggleWishlist(false)"></div>
+    <div class="drawer" id="wishlist-drawer">
+        <div class="drawer-header">
+            <h3><i data-lucide="heart"></i> My Wishlist (<span id="wishlist-drawer-count">0</span>)</h3>
+            <button class="close-drawer-btn" onclick="toggleWishlist(false)"><i data-lucide="x"></i></button>
+        </div>
+        <div class="drawer-content" id="wishlist-items-container">
+            <!-- Wishlist items loaded here -->
+        </div>
+        <div class="drawer-empty-state" id="wishlist-empty-state">
+            <i data-lucide="heart"></i>
+            <p>Save premium garments in your wishlist for later.</p>
+            <button class="btn btn-primary" onclick="toggleWishlist(false); navigateTo('shop')">Discover Items</button>
+        </div>
+    </div>
+
+    <!-- Interactive Size Advisor Drawer (Right Side) -->
+    <div class="drawer-overlay" id="size-advisor-overlay" onclick="toggleSizeAdvisor(false)"></div>
+    <div class="drawer" id="size-advisor-drawer">
+        <div class="drawer-header">
+            <h3><i data-lucide="rulers"></i> Premium Size Advisor</h3>
+            <button class="close-drawer-btn" onclick="toggleSizeAdvisor(false)"><i data-lucide="x"></i></button>
+        </div>
+        <div class="drawer-content">
+            <div class="size-advisor-explainer">
+                <p>Using our precision tailoring matrix, enter your details to receive an instant recommended size recommendation.</p>
+            </div>
+            <div class="advisor-controls">
+                <div class="control-group">
+                    <label>Height (cm): <span id="advisor-height-display">175</span> cm</label>
+                    <input type="range" id="advisor-height-input" min="120" max="210" value="175" oninput="calculateAdvisorSize()">
+                </div>
+                <div class="control-group">
+                    <label>Weight (kg): <span id="advisor-weight-display">70</span> kg</label>
+                    <input type="range" id="advisor-weight-input" min="30" max="130" value="70" oninput="calculateAdvisorSize()">
+                </div>
+                <div class="control-group">
+                    <label>Prefer Fit Style:</label>
+                    <select id="advisor-fit-select" onchange="calculateAdvisorSize()">
+                        <option value="fitted">Refined Fit (Tailored Close)</option>
+                        <option value="regular" selected>Classic Fit (Comfortable)</option>
+                        <option value="oversized">Oversized / Fluid drape</option>
+                    </select>
+                </div>
+            </div>
+            <div class="advisor-result">
+                <h4>YOUR RECOMMENDED SIZE</h4>
+                <div class="recommended-size-badge" id="recommended-size-output">M</div>
+                <p class="accuracy-note">Calculated with 96% accuracy based on Shanmukha sizing models.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dynamic Product Quick View Modal -->
+    <div class="modal-overlay" id="product-modal-overlay" onclick="closeProductModal()">
+        <div class="modal-container" onclick="event.stopPropagation()">
+            <button class="close-modal-btn" onclick="closeProductModal()"><i data-lucide="x"></i></button>
+            <div class="product-modal-grid" id="product-modal-details">
+                <!-- Loaded dynamically by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== PREMIUM INTERACTIVE CHECKOUT MODAL OVERLAY ==================== -->
+    <div class="modal-overlay" id="checkout-modal-overlay">
+        <div class="checkout-modal-container">
+            <div class="checkout-header">
+                <h2>Secure Luxury Checkout</h2>
+                <div class="checkout-steps">
+                    <div class="step active" id="step-lbl-1">1. Shipping</div>
+                    <div class="step" id="step-lbl-2">2. Payment</div>
+                    <div class="step" id="step-lbl-3">3. Review</div>
+                </div>
+                <button class="close-checkout-btn" onclick="closeCheckout()"><i data-lucide="x"></i></button>
+            </div>
+
+            <div class="checkout-grid">
+                <!-- Left Hand Details (Interactive Forms) -->
+                <div class="checkout-form-area">
+                    
+                    <!-- STEP 1: SHIPPING FORM -->
+                    <div class="checkout-step-panel active" id="checkout-step-1">
+                        <h3>Delivery Address & Contact</h3>
+                        <form id="shipping-form" onsubmit="handleShippingSubmit(event)">
+                            <div class="form-row split">
+                                <div class="form-input">
+                                    <label>First Name *</label>
+                                    <input type="text" id="shipping-first-name" required placeholder="John">
+                                </div>
+                                <div class="form-input">
+                                    <label>Last Name *</label>
+                                    <input type="text" id="shipping-last-name" required placeholder="Doe">
+                                </div>
+                            </div>
+                            <div class="form-row split">
+                                <div class="form-input">
+                                    <label>Contact Phone Number *</label>
+                                    <input type="tel" id="shipping-phone" required placeholder="e.g. +91 98765 43210">
+                                </div>
+                                <div class="form-input">
+                                    <label>Email Address (For Receipt) *</label>
+                                    <input type="email" id="shipping-email" required placeholder="johndoe@luxury.com">
+                                </div>
+                            </div>
+                            <div class="form-input">
+                                <label>Street Address *</label>
+                                <input type="text" id="shipping-address" required placeholder="742 Luxury Avenue, Apt 4B">
+                            </div>
+                            <div class="form-row split">
+                                <div class="form-input">
+                                    <label>City *</label>
+                                    <input type="text" id="shipping-city" required placeholder="New York">
+                                </div>
+                                <div class="form-input">
+                                    <label>Postal Code *</label>
+                                    <input type="text" id="shipping-zip" required placeholder="10001">
+                                </div>
+                            </div>
+                            <div class="form-actions-right">
+                                <button type="submit" class="btn btn-primary">Continue to Payment <i data-lucide="arrow-right"></i></button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- STEP 2: PAYMENT FORM -->
+                    <div class="checkout-step-panel" id="checkout-step-2">
+                        <h3>Payment Method</h3>
+                        <div class="payment-method-selector" style="padding: 1.5rem; background: var(--bg-tertiary); border: 1px solid var(--gold-medium); border-radius: 6px; text-align: center; margin-bottom: 1.5rem;">
+                            <div style="font-size: 3rem; color: var(--gold-dark); margin-bottom: 0.5rem;"><i data-lucide="truck"></i></div>
+                            <h4 style="font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; color: var(--gold-dark); margin-bottom: 0.5rem;">Pay on Delivery (COD)</h4>
+                            <p style="font-size: 0.85rem; color: var(--text-secondary); max-width: 320px; margin: 0 auto 1.5rem;">We offer strictly Pay on Delivery for premium convenience. Our concierge courier agent will collect payment (Cash, Card, or UPI) upon signature delivery of your handpacked custom garment box.</p>
+                            <span style="font-size: 0.75rem; font-weight: 700; color: var(--color-orange-dark); background: #FFF5F2; padding: 0.4rem 0.8rem; border-radius: 20px; border: 1px solid #FFE4DD;">Pre-selected & Free Complimentary Shipping</span>
+                        </div>
+                        <div class="form-actions-split">
+                            <button type="button" class="btn btn-outline" onclick="goToStep(1)">Back</button>
+                            <button type="button" class="btn btn-primary" onclick="goToStep(3)">Confirm Payment Method <i data-lucide="arrow-right"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- STEP 3: FINAL REVIEW & ORDER PLACE -->
+                    <div class="checkout-step-panel" id="checkout-step-3">
+                        <h3>Order Final Confirmation</h3>
+                        <div class="review-details" style="background: var(--bg-secondary); border: 1px solid var(--border-soft); padding: 1.2rem; border-radius: 6px; margin-bottom: 1.5rem; font-size: 0.85rem; display: flex; flex-direction: column; gap: 0.6rem;">
+                            <p><strong>Shipping To:</strong> <span id="review-shipping-summary">John Doe, New York</span></p>
+                            <p><strong>Contact Phone:</strong> <span id="review-phone-summary">+91 98765 43210</span></p>
+                            <p><strong>Payment Method:</strong> <span id="review-payment-summary" style="color: var(--color-orange-dark); font-weight: 700;">Pay on Delivery (Cash/Card at door)</span></p>
+                        </div>
+                        <div class="order-notice">
+                            <i data-lucide="shield-check"></i>
+                            <p>By clicking "Place Order", your request will be registered and custom-tailored immediately. You receive lifetime alterations for all tailoring garments in this order.</p>
+                        </div>
+                        <div class="form-actions-split">
+                            <button type="button" class="btn btn-outline" onclick="goToStep(2)">Back</button>
+                            <button type="button" class="btn btn-primary" id="place-order-btn" onclick="submitFinalOrder()">
+                                <span id="btn-order-text">Place Order (Pay on Delivery)</span>
+                                <span class="spinner" id="checkout-spinner"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- SUCCESS STATE -->
+                    <div class="checkout-step-panel success-order-panel" id="checkout-success-panel">
+                        <div class="success-icon-badge">
+                            <i data-lucide="check"></i>
+                        </div>
+                        <h2>Your Order is Confirmed</h2>
+                        <p class="order-num-txt">Order Reference: <strong>#SF-2026-9528A</strong></p>
+                        <p class="success-details">Thank you for shopping at Shanmukha Fashions. A receipt and shipment tracking details have been generated and dispatched to your email address. Handcrafted packaging will arrive within 2 business days.</p>
+                        <button class="btn btn-primary" onclick="closeCheckout(); navigateTo('shop')">Continue Shopping</button>
+                    </div>
+
+                </div>
+
+                <!-- Right Hand Summary (Basket Summary Review) -->
+                <div class="checkout-summary-area">
+                    <h3>Basket Summary</h3>
+                    <div class="checkout-summary-list" id="checkout-summary-items">
+                        <!-- Loaded dynamically -->
+                    </div>
+                    <hr class="summary-divider">
+                    <div class="summary-line">
+                        <span>Original Price</span>
+                        <span id="checkout-subtotal">₹0.00</span>
+                    </div>
+                    <div class="summary-line">
+                        <span>Luxury Pack & Shipping</span>
+                        <span class="free-badge">COMPLIMENTARY</span>
+                    </div>
+                    <hr class="summary-divider">
+                    <div class="summary-line total">
+                        <span>Grand Total</span>
+                        <span id="checkout-grandtotal">₹0.00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fullscreen Confetti Overlay for Successful Checkout -->
+    <div id="confetti-canvas-overlay"></div>
+
+    <!-- ==================== LUXURY FOOTER ==================== -->
+    <footer class="luxury-footer">
+        <!-- Brand Newsletter Subscription -->
+        <div class="newsletter-subscription-area">
+            <div class="newsletter-content">
+                <h3>Subscribe To The Shanmukha Edit</h3>
+                <p>Unlock early access to custom collections, seasonal edits, and styling advisor updates.</p>
+            </div>
+            <form class="newsletter-form" onsubmit="handleNewsletterSubscribe(event)">
+                <input type="email" required placeholder="Enter your email address...">
+                <button type="submit" class="newsletter-btn"><i data-lucide="arrow-right"></i></button>
+            </form>
+            <div class="newsletter-success-lbl" id="newsletter-success-state">
+                <i data-lucide="check-circle-2"></i> Subscription successful! Welcome to Shanmukha Fashions.
+            </div>
+        </div>
+
+        <div class="footer-links-grid">
+            <div class="footer-brand-bio">
+                <div class="brand-logo-area">
+                    <img src="logo.png" alt="Shanmukha Fashions Logo" class="footer-logo">
+                    <span class="brand-name">SHANMUKHA FASHIONS</span>
+                </div>
+                <p class="brand-bio-desc">Handcrafted tailoring, curated fine linens, silks, and luxury knitwear designs that outlive passing trends.</p>
+            </div>
+            <div class="footer-col">
+                <h4>Collections</h4>
+                <a href="#shop" onclick="filterDepartment('mens')">Menswear Wardrobe</a>
+                <a href="#shop" onclick="filterDepartment('womens')">Ladieswear Atelier</a>
+                <a href="#shop" onclick="filterDepartment('kids')">Kidswear Organic Collection</a>
+                <a href="#shop" onclick="navigateTo('shop')">New Arrivals Grid</a>
+            </div>
+            <div class="footer-col">
+                <h4>Services</h4>
+                <a href="#" onclick="toggleSizeAdvisor(true)">Interactive Sizing Advisor</a>
+                <a href="#story" onclick="navigateTo('story')">Our Craftsmanship Heritage</a>
+                <a href="#" onclick="alert('Shanmukha Tailors helpline: 1-800-SHANMUKHA')">Bespoke Alteration Care</a>
+            </div>
+            <div class="footer-col">
+                <h4>Support</h4>
+                <a href="#" onclick="alert('Email us at care@shanmukhafashions.com')">Customer Relations Care</a>
+                <a href="#" onclick="alert('Complimentary premium courier shipping with real-time tracking.')">Shipping & Delivery Info</a>
+                <a href="#" onclick="alert('We offer 30-day premium return packaging.')">Returns & Luxury Exchange</a>
+                <a href="#" onclick="toggleAdminPanel(true)" style="color:var(--color-orange); font-weight:700;"><i data-lucide="lock" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:2px;"></i> Owner Dashboard</a>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <p>&copy; 2026 Shanmukha Fashions. Built with Premium Design Aesthetics. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <!-- ==================== PREMIUM INTERACTIVE OWNER / ADMIN PORTAL MODAL ==================== -->
+    <div class="modal-overlay" id="admin-drawer-overlay" onclick="toggleAdminPanel(false)" style="z-index: 1050;">
+        <div class="modal-container" id="admin-drawer" onclick="event.stopPropagation()" style="max-width: 550px; display: flex; flex-direction: column; overflow: hidden; max-height: 85vh;">
+            <div class="drawer-header" style="display: flex; justify-content: space-between; align-items: center; padding: 1.2rem; border-bottom: 1px solid var(--border-soft); background-color: var(--bg-tertiary);">
+                <h3 style="font-size: 1rem; font-weight: 700; color: var(--text-primary);"><i data-lucide="lock"></i> Store Owner Portal</h3>
+                <button class="close-drawer-btn" onclick="toggleAdminPanel(false)" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;"><i data-lucide="x"></i></button>
+            </div>
+        
+        <!-- Tab Navigation (Only visible after login) -->
+        <div class="admin-tab-nav" id="admin-nav-bar" style="display: none; padding: 0.8rem 1.2rem; background-color: var(--bg-tertiary); border-bottom: 1px solid var(--border-soft); justify-content: space-around;">
+            <button class="admin-tab-btn active" id="btn-admin-tab-orders" onclick="switchAdminTab('orders')" style="background:transparent; border:none; border-bottom:2px solid var(--amazon-blue); padding:0.4rem; font-weight:700; cursor:pointer;">Orders History</button>
+            <button class="admin-tab-btn" id="btn-admin-tab-add" onclick="switchAdminTab('add')" style="background:transparent; border:none; padding:0.4rem; font-weight:700; cursor:pointer; color:var(--text-secondary);">Add Garment</button>
+        </div>
+
+        <div class="drawer-content" style="padding: 1.2rem; overflow-y: auto;">
+            <!-- 1. LOGIN SCREEN -->
+            <div id="admin-login-screen">
+                <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1.5rem; text-align:center;">Log in using your store owner pin to view orders and manage catalog items.</p>
+                <form id="admin-login-form" onsubmit="handleAdminLogin(event)">
+                    <div class="form-input">
+                        <label>Owner Access Key *</label>
+                        <input type="password" id="admin-pin-input" required placeholder="Enter Key (default: shanmukha2026)" style="text-align:center; font-size:1.1rem; letter-spacing:0.15em;">
+                    </div>
+                    <p id="admin-login-error" style="display:none; color:#B12704; font-size:0.8rem; font-weight:700; text-align:center; margin-bottom:1rem;">Invalid Access Key. Try 'shanmukha2026'.</p>
+                    <button type="submit" class="btn btn-primary" style="width:100%;">Unlock Owner Dashboard</button>
+                </form>
+            </div>
+
+            <!-- 2. OWNER DASHBOARD CONTENT (Hidden until Login) -->
+            <div id="admin-dashboard-screen" style="display: none;">
+                
+                <!-- TAB A: ORDERS HISTORY -->
+                <div id="admin-tab-orders-content">
+                    <!-- Cloud Sync Portal Controls -->
+                    <div class="admin-sync-card" style="background: var(--bg-secondary); border: 1px solid var(--gold-medium); border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem;">
+                        <h4 style="font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; color: var(--gold-dark); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 5px;">
+                            <i data-lucide="cloud"></i> Live Cloud Database
+                        </h4>
+                        <p style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 1rem;">Publish your updated product inventory directly to the cloud store database. Your changes will go live instantly for all customers worldwide.</p>
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                            <button class="btn btn-primary" id="btn-admin-publish-db" onclick="publishProductsToDb()" style="padding: 0.6rem; font-size: 0.8rem; width: 100%;">
+                                ☁ Publish Changes to Cloud
+                            </button>
+                            <button class="btn btn-outline" onclick="resetDbProducts()" style="padding: 0.6rem; font-size: 0.8rem; width: 100%; border-color: #ff4d4d; color: #ff4d4d; background: transparent;">
+                                ⟲ Reset Store to Defaults
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.2rem;">
+                        <h4 style="font-size:1rem; font-weight:700;">Customer Orders</h4>
+                        <button class="clear-filters-btn" onclick="clearAllOrders()" style="font-size:0.75rem;">Clear History</button>
+                    </div>
+                    <div id="admin-orders-list-container" style="display:flex; flex-direction:column; gap:1.2rem;">
+                        <!-- Loaded dynamically -->
+                    </div>
+                </div>
+
+                <!-- TAB B: ADD GARMENT -->
+                <div id="admin-tab-add-content" style="display: none;">
+                    <h4 style="font-size:1rem; font-weight:700; margin-bottom:1rem;">Publish New Garment</h4>
+                    <form id="admin-add-form" onsubmit="handleAdminAddProduct(event)">
+                        <div class="form-input">
+                            <label>Garment Title *</label>
+                            <input type="text" id="admin-add-title" required placeholder="e.g. Silk Bandhgala Jacket">
+                        </div>
+                        <div class="form-row split">
+                            <div class="form-input">
+                                <label>Department *</label>
+                                <select id="admin-add-dept" class="custom-select" style="padding:0.6rem;">
+                                    <option value="mens">Menswear</option>
+                                    <option value="womens">Ladieswear</option>
+                                    <option value="kids">Kidswear</option>
+                                </select>
+                            </div>
+                            <div class="form-input">
+                                <label>Category *</label>
+                                <select id="admin-add-category" class="custom-select" style="padding:0.6rem;">
+                                    <option value="Tops">Tops</option>
+                                    <option value="Bottoms">Bottoms</option>
+                                    <option value="Outerwear">Outerwear</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row split">
+                            <div class="form-input">
+                                <label>Price (₹) *</label>
+                                <input type="number" id="admin-add-price" step="5" min="10" max="500" required placeholder="150">
+                            </div>
+                            <div class="form-input">
+                                <label>Available Stock *</label>
+                                <input type="number" id="admin-add-stock" min="1" max="100" required placeholder="5">
+                            </div>
+                        </div>
+                        <div class="form-input">
+                            <label>Upload Garment Image File *</label>
+                            <input type="file" accept="image/*" id="productImage" required>
+                        </div>
+                        <div class="form-input">
+                            <label>Garment Description *</label>
+                            <input type="text" id="admin-add-desc" required placeholder="Brief elegant sentence explaining style.">
+                        </div>
+                        <div class="form-input">
+                            <label>Fabric & Care specifications *</label>
+                            <input type="text" id="admin-add-details" required placeholder="e.g. 100% fine wool, dry clean only.">
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width:100%; margin-top:0.8rem;">Publish Garment to Catalog</button>
+                    </form>
+                </div>
+
+                <hr style="border:none; border-top:1px solid var(--border-soft); margin:2rem 0 1rem;">
+                <button class="btn btn-outline" onclick="handleAdminLogout()" style="width:100%; padding:0.5rem;">Log Out Owner Portal</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- ==================== CUSTOMER LOGIN & TRACK ORDER MODAL OVERLAY ==================== -->
+    <div class="modal-overlay" id="login-modal-overlay" onclick="closeLoginModal()" style="z-index: 1050;">
+        <div class="modal-container" id="login-modal" onclick="event.stopPropagation()" style="max-width: 500px; display: flex; flex-direction: column; overflow: hidden; max-height: 80vh;">
+            <div class="drawer-header" style="display: flex; justify-content: space-between; align-items: center; padding: 1.2rem; border-bottom: 1px solid var(--border-soft); background-color: var(--bg-tertiary);">
+                <h3 style="font-size: 1rem; font-weight: 700; color: var(--text-primary);"><i data-lucide="user"></i> Customer Portal</h3>
+                <button class="close-drawer-btn" onclick="closeLoginModal()" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;"><i data-lucide="x"></i></button>
+            </div>
+            
+            <div class="drawer-content" style="padding: 1.5rem; overflow-y: auto;">
+                <!-- Login/Register Form -->
+                <div id="login-form-container">
+                    <!-- Tab Buttons for Sign In / Sign Up -->
+                    <div class="login-tabs" style="display: flex; gap: 1rem; border-bottom: 1px solid var(--border-soft); margin-bottom: 1.5rem; padding-bottom: 0.5rem;">
+                        <button type="button" class="login-tab-btn active" onclick="switchLoginTab('signin')" id="btn-login-tab-signin" style="background: transparent; border: none; font-weight: bold; border-bottom: 2px solid var(--amazon-blue); padding: 0.2rem 0.5rem; cursor: pointer; font-size: 0.9rem; color: var(--text-primary); outline: none;">Sign In</button>
+                        <button type="button" class="login-tab-btn" onclick="switchLoginTab('signup')" id="btn-login-tab-signup" style="background: transparent; border: none; font-weight: bold; padding: 0.2rem 0.5rem; cursor: pointer; font-size: 0.9rem; color: var(--text-secondary); outline: none;">Create Account</button>
+                    </div>
+                    
+                    <p id="login-explainer-text" style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.5rem; text-align: center;">Sign in to your customer account using your phone number and password.</p>
+                    <form id="customer-login-form" onsubmit="handleCustomerLogin(event)">
+                        <input type="hidden" id="login-action-type" value="signin">
+                        <div class="form-input">
+                            <label>Phone Number *</label>
+                            <input type="tel" id="customer-phone-input" required placeholder="e.g. +91 98765 43210" style="text-align: center; font-size: 1.1rem;">
+                        </div>
+                        <div class="form-input">
+                            <label>Password *</label>
+                            <input type="password" id="customer-password-input" required placeholder="••••••••" style="text-align: center; font-size: 1.1rem; letter-spacing: 0.1em;">
+                        </div>
+                        <p id="customer-login-error" style="display: none; color: #B12704; font-size: 0.8rem; font-weight: 700; text-align: center; margin-bottom: 1rem;"></p>
+                        <button type="submit" class="btn btn-primary" id="customer-login-submit-btn" style="width: 100%;">Sign In</button>
+                    </form>
+                </div>
+                
+                <!-- Logged In / Order History View -->
+                <div id="logged-in-container" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; background: var(--bg-tertiary); padding: 0.8rem; border-radius: 4px; border: 1px solid var(--border-soft);">
+                        <div>
+                            <span style="font-size: 0.8rem; color: var(--text-secondary);">Logged in as:</span>
+                            <h4 id="logged-in-phone" style="font-size: 0.95rem; font-weight: 700;"></h4>
+                        </div>
+                        <button class="btn btn-outline" onclick="handleCustomerLogout()" style="padding: 0.4rem 0.8rem; font-size: 0.75rem;">Log Out</button>
+                    </div>
+                    
+                    <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 1rem;">Your Custom Orders History</h4>
+                    <div id="customer-orders-results" style="display: flex; flex-direction: column; gap: 1rem;">
+                        <!-- dynamic order items will load here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Core Logic Application Javascript -->
+    <script src="app.js"></script>
+</body>
+</html>
