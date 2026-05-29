@@ -384,10 +384,10 @@ function getProductCardHTML(product) {
     // Check if store owner is logged in to append delete controls
     const adminDeleteButton = APP_STATE.adminLoggedIn ? `
         <div style="display:flex; gap:0.5rem; margin-top:0.8rem;">
-            <button class="btn btn-outline" onclick="event.stopPropagation(); openEditForm('${encodeURIComponent(product.id)}')" style="flex:1; background-color:#F5F5F5; border-color:#999; color:#333; font-size:0.75rem; font-weight:700; padding:0.4rem;">
+            <button class="btn btn-outline" onclick="event.stopPropagation(); openEditForm('${product.id.replace(/'/g, "\\'")  }')" style="flex:1; background-color:#F5F5F5; border-color:#999; color:#333; font-size:0.75rem; font-weight:700; padding:0.4rem;">
                 <i data-lucide="edit" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:2px;"></i> Edit
             </button>
-            <button class="btn btn-outline" onclick="event.stopPropagation(); adminDeleteProduct('${encodeURIComponent(product.id)}')" style="flex:1; background-color:#FDF0F0; border-color:#D62F2F; color:#D62F2F; font-size:0.75rem; font-weight:700; padding:0.4rem;">
+            <button class="btn btn-outline" onclick="event.stopPropagation(); adminDeleteProduct('${product.id.replace(/'/g, "\\'")  }')" style="flex:1; background-color:#FDF0F0; border-color:#D62F2F; color:#D62F2F; font-size:0.75rem; font-weight:700; padding:0.4rem;">
                 <i data-lucide="trash-2" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:2px;"></i> Delete
             </button>
         </div>
@@ -1297,30 +1297,47 @@ function toggleAdminPanel(show) {
     }
 }
 
-function handleAdminLogin(event) {
+async function handleAdminLogin(event) {
     event.preventDefault();
     const pin = document.getElementById("admin-pin-input").value;
     const errorEl = document.getElementById("admin-login-error");
+    errorEl.style.display = "none";
 
-    if (true) { // Handled by server session now
-        errorEl.style.display = "none";
-        APP_STATE.adminLoggedIn = true;
-        
-        // Toggle visual screens
-        document.getElementById("admin-login-screen").style.display = "none";
-        document.getElementById("admin-dashboard-screen").style.display = "block";
-        document.getElementById("admin-nav-bar").style.display = "flex";
-        
-        // Redraw catalog grids to show "Delete Garment" buttons instantly!
-        renderCatalog();
-        renderHomeFeatured();
-        renderAdminOrders();
-        
-        // Reset login input
-        document.getElementById("admin-pin-input").value = "";
-    } else {
-        errorEl.textContent = "Invalid Access Key.";
+    try {
+        const res = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            APP_STATE.adminLoggedIn = true;
+
+            // Toggle visual screens — MUST be flex (sidebar layout)
+            document.getElementById("admin-login-screen").style.display = "none";
+            document.getElementById("admin-dashboard-screen").style.display = "flex";
+            document.getElementById("admin-nav-bar").style.display = "flex";
+
+            // Load data immediately
+            loadStats();
+            renderAdminOrders();
+            renderAdminProductList();
+
+            // Redraw catalog to show delete buttons
+            renderCatalog();
+            renderHomeFeatured();
+
+            // Reset login input
+            document.getElementById("admin-pin-input").value = "";
+        } else {
+            errorEl.textContent = "Invalid Access Key. Please try again.";
+            errorEl.style.display = "block";
+        }
+    } catch (e) {
+        errorEl.textContent = "Server error. Please try again.";
         errorEl.style.display = "block";
+        console.error(e);
     }
 }
 
@@ -1347,14 +1364,18 @@ function switchAdminTab(tabName) {
     const contentId = `admin-tab-${tabName}-content`;
     const btnId = `btn-admin-tab-${tabName}`;
     
-    document.getElementById(contentId).style.display = 'block';
-    document.getElementById(btnId).classList.add('active');
+    const contentEl = document.getElementById(contentId);
+    const btnEl = document.getElementById(btnId);
+    if (contentEl) contentEl.style.display = 'block';
+    if (btnEl) btnEl.classList.add('active');
 
-    // Trigger data loading if necessary
+    // Trigger data loading
     if (tabName === 'stats') {
         loadStats();
     } else if (tabName === 'orders') {
         renderAdminOrders();
+    } else if (tabName === 'products') {
+        renderAdminProductList();
     } else if (tabName === 'analytics') {
         loadAnalytics();
     }
@@ -1911,24 +1932,31 @@ function executeExportCSV() {
 
 function openEditForm(productId) {
     const product = PRODUCTS.find(p => p.id === productId);
-    if(!product) return;
+    if (!product) {
+        alert('Could not find product to edit. Please refresh the page.');
+        return;
+    }
     
     document.getElementById('edit-product-id').value = product.id;
     document.getElementById('edit-product-title').value = product.title;
     document.getElementById('edit-product-price').value = product.price;
     document.getElementById('edit-product-stock').value = product.stock;
     document.getElementById('edit-product-dept').value = product.department;
-    document.getElementById('edit-product-desc').value = product.desc;
+    document.getElementById('edit-product-desc').value = product.desc || '';
     
     const catSelect = document.getElementById('edit-product-category');
     catSelect.innerHTML = '';
-    const deptCats = [...new Set(PRODUCTS.filter(p => p.department === product.department).map(p => p.category))];
-    if(!deptCats.includes(product.category)) deptCats.push(product.category);
-    deptCats.forEach(c => {
-        catSelect.innerHTML += `<option value="${c}">${c}</option>`;
+    const allCats = ['Tops', 'Bottoms', 'Outerwear', 'Accessories', 'Footwear', 'Ethnic Wear'];
+    if (!allCats.includes(product.category)) allCats.push(product.category);
+    allCats.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = c;
+        if (c === product.category) opt.selected = true;
+        catSelect.appendChild(opt);
     });
-    catSelect.value = product.category;
 
+    // Show the modal as flex
     document.getElementById('edit-product-modal-overlay').style.display = 'flex';
 }
 
@@ -1945,7 +1973,9 @@ async function handleEditProductSubmit(e) {
         stock: parseInt(document.getElementById('edit-product-stock').value),
         department: document.getElementById('edit-product-dept').value,
         category: document.getElementById('edit-product-category').value,
-        desc: document.getElementById('edit-product-desc').value
+        desc: document.getElementById('edit-product-desc').value,
+        details: document.getElementById('edit-product-details') ? document.getElementById('edit-product-details').value : '',
+        sizes: document.getElementById('edit-product-sizes') ? document.getElementById('edit-product-sizes').value : ''
     };
 
     try {
@@ -1955,16 +1985,19 @@ async function handleEditProductSubmit(e) {
             body: JSON.stringify(body)
         });
         const data = await res.json();
-        if(data.success) {
+        if (data.success) {
             closeEditProductModal();
             await loadProductsFromDb();
             renderCatalog();
             renderHomeFeatured();
+            renderAdminProductList();
+            alert('Garment updated successfully!');
         } else {
-            alert('Failed to update product.');
+            alert('Failed to update: ' + data.message);
         }
     } catch(e) {
         console.error(e);
+        alert('Error saving changes.');
     }
 }
 
