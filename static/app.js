@@ -1561,6 +1561,7 @@ async function adminDeleteProduct(productId) {
                 renderCatalog();
                 renderHomeFeatured();
                 renderCategoryFilters();
+                if (typeof renderAdminProductList === 'function') renderAdminProductList();
             } else {
                 alert("Failed to delete: " + data.message);
             }
