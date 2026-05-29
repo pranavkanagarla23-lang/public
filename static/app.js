@@ -1504,9 +1504,51 @@ async function clearAllOrders() {
     }
 }
 
+function openEditForm(productId) {
+    const product = PRODUCTS.find(p => p.id === productId);
+    if (!product) {
+        alert('Could not find product to edit. Please refresh the page.');
+        return;
+    }
+    
+    // Switch to Catalog & Garments tab
+    switchAdminTab('products');
+
+    // Populate the main Add Garment form
+    document.getElementById('admin-edit-id').value = product.id;
+    document.getElementById('admin-add-title').value = product.title;
+    document.getElementById('admin-add-price').value = product.price;
+    document.getElementById('admin-add-mrp').value = product.mrp || '';
+    document.getElementById('admin-add-stock').value = product.stock;
+    document.getElementById('admin-add-dept').value = product.department;
+    document.getElementById('admin-add-desc').value = product.desc || '';
+    document.getElementById('admin-add-details').value = product.details || '';
+    
+    // Reset category dropdown
+    updateCategoryDropdown();
+    document.getElementById('admin-add-category').value = product.category;
+
+    // Change button text and show Cancel button
+    document.getElementById('admin-add-submit-btn').textContent = "Update Garment in Catalog";
+    document.getElementById('admin-add-cancel-btn').style.display = "block";
+
+    // Scroll to top of the form smoothly
+    document.querySelector('.admin-sidebar-nav').scrollIntoView({ behavior: 'smooth' });
+    const tabContent = document.getElementById('admin-tab-products-content');
+    if (tabContent) tabContent.scrollIntoView({ behavior: 'smooth' });
+}
+
+function cancelEditMode() {
+    document.getElementById('admin-edit-id').value = "";
+    document.getElementById('admin-add-form').reset();
+    document.getElementById('admin-add-submit-btn').textContent = "Publish Garment to Catalog";
+    document.getElementById('admin-add-cancel-btn').style.display = "none";
+}
+
 async function handleAdminAddProduct(event) {
     event.preventDefault();
     
+    const editId = document.getElementById('admin-edit-id').value;
     const title = document.getElementById("admin-add-title").value;
     const dept = document.getElementById("admin-add-dept").value;
     const category = document.getElementById("admin-add-category").value;
@@ -1516,14 +1558,6 @@ async function handleAdminAddProduct(event) {
     const stock = parseInt(document.getElementById("admin-add-stock").value);
     const desc = document.getElementById("admin-add-desc").value;
     const details = document.getElementById("admin-add-details").value;
-    const imageFile = document.getElementById("productImage").files[0];
-    const imageUrl = document.getElementById("productImageUrl") ? document.getElementById("productImageUrl").value.trim() : '';
-    
-    // Require either a file OR a URL
-    if (!imageFile && !imageUrl) {
-        alert("Please either upload a garment image file OR paste an image URL.");
-        return;
-    }
     
     if (mrp && mrp <= price) {
         alert("MRP must be greater than the Selling Price to show a discount. Leave MRP blank if there's no discount.");
@@ -1535,47 +1569,77 @@ async function handleAdminAddProduct(event) {
     const sizesVal = hasSizes === 'yes' ? document.getElementById('productSizes').value : '';
 
     try {
-        let res;
-
-        if (imageFile) {
-            // Use FormData for file upload (goes to Cloudinary)
-            const formData = new FormData();
-            formData.append('title', title);
-            formData.append('department', dept);
-            formData.append('category', category);
-            if (mrp) formData.append('mrp', mrp);
-            formData.append('price', price);
-            formData.append('stock', stock);
-            formData.append('desc', desc);
-            formData.append('details', details);
-            formData.append('productImage', imageFile);
-            formData.append('sizes', sizesVal);
-            res = await fetch('/api/products', { method: 'POST', body: formData });
-        } else {
-            // Use JSON with image URL directly
-            res = await fetch('/api/products', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, department: dept, category, mrp, price, stock, desc, details, sizes: sizesVal, image: imageUrl })
+        if (editId) {
+            // -- EDIT MODE (Update existing) --
+            const body = { title, price, stock, department: dept, category, desc, details, sizes: sizesVal, mrp };
+            const res = await fetch(`/api/products/${encodeURIComponent(editId)}`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(body)
             });
-        }
+            const data = await res.json();
+            if (data.success) {
+                alert('Garment updated successfully!');
+                cancelEditMode();
+                await loadProductsFromDb();
+                renderCatalog();
+                renderHomeFeatured();
+                renderAdminProductList();
+            } else {
+                alert('Failed to update: ' + data.message);
+            }
 
-        const data = await res.json();
-        
-        if (data.success) {
-            document.getElementById("admin-add-form").reset();
-            await loadProductsFromDb();
-            renderCatalog();
-            renderHomeFeatured();
-            renderCategoryFilters();
-            alert("'" + title + "' has been successfully published to your secure cloud catalog!");
-            switchAdminTab('orders');
         } else {
-            alert("Failed to publish: " + data.message);
+            // -- ADD MODE (Create new) --
+            const imageFile = document.getElementById("productImage").files[0];
+            const imageUrl = document.getElementById("productImageUrl") ? document.getElementById("productImageUrl").value.trim() : '';
+            
+            if (!imageFile && !imageUrl) {
+                alert("Please either upload a garment image file OR paste an image URL.");
+                return;
+            }
+
+            let res;
+            if (imageFile) {
+                const formData = new FormData();
+                formData.append('title', title);
+                formData.append('department', dept);
+                formData.append('category', category);
+                if (mrp) formData.append('mrp', mrp);
+                formData.append('price', price);
+                formData.append('stock', stock);
+                formData.append('desc', desc);
+                formData.append('details', details);
+                formData.append('hasSizes', hasSizes);
+                formData.append('sizes', sizesVal);
+                formData.append('image', imageFile);
+
+                res = await fetch('/api/products', { method: 'POST', body: formData });
+            } else {
+                const bodyObj = { title, department: dept, category, mrp, price, stock, desc, details, hasSizes, sizes: sizesVal, imageUrl };
+                res = await fetch('/api/products', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(bodyObj)
+                });
+            }
+
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById("admin-add-form").reset();
+                alert("Garment published to catalog!");
+                await loadProductsFromDb();
+                renderCatalog();
+                renderHomeFeatured();
+                renderCategoryFilters();
+                renderAdminProductList();
+            } else {
+                alert("Failed to add product: " + data.message);
+            }
         }
     } catch (e) {
         console.error(e);
-        alert("Error connecting to server to add product.");
+        alert("Error connecting to server.");
     }
 }
 
@@ -2048,76 +2112,5 @@ function executeExportCSV() {
     if(start && end) url += `?start_date=${start}&end_date=${end}`;
     window.location.href = url;
     closeExportModal();
-}
-
-function openEditForm(productId) {
-    const product = PRODUCTS.find(p => p.id === productId);
-    if (!product) {
-        alert('Could not find product to edit. Please refresh the page.');
-        return;
-    }
-    
-    document.getElementById('edit-product-id').value = product.id;
-    document.getElementById('edit-product-title').value = product.title;
-    document.getElementById('edit-product-price').value = product.price;
-    document.getElementById('edit-product-stock').value = product.stock;
-    document.getElementById('edit-product-dept').value = product.department;
-    document.getElementById('edit-product-desc').value = product.desc || '';
-    
-    const catSelect = document.getElementById('edit-product-category');
-    catSelect.innerHTML = '';
-    const allCats = ['Tops', 'Bottoms', 'Outerwear', 'Accessories', 'Footwear', 'Ethnic Wear'];
-    if (!allCats.includes(product.category)) allCats.push(product.category);
-    allCats.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c;
-        opt.textContent = c;
-        if (c === product.category) opt.selected = true;
-        catSelect.appendChild(opt);
-    });
-
-    // Show the modal as flex
-    document.getElementById('edit-product-modal-overlay').style.display = 'flex';
-}
-
-function closeEditProductModal() {
-    document.getElementById('edit-product-modal-overlay').style.display = 'none';
-}
-
-async function handleEditProductSubmit(e) {
-    e.preventDefault();
-    const id = document.getElementById('edit-product-id').value;
-    const body = {
-        title: document.getElementById('edit-product-title').value,
-        price: parseFloat(document.getElementById('edit-product-price').value),
-        stock: parseInt(document.getElementById('edit-product-stock').value),
-        department: document.getElementById('edit-product-dept').value,
-        category: document.getElementById('edit-product-category').value,
-        desc: document.getElementById('edit-product-desc').value,
-        details: document.getElementById('edit-product-details') ? document.getElementById('edit-product-details').value : '',
-        sizes: document.getElementById('edit-product-sizes') ? document.getElementById('edit-product-sizes').value : ''
-    };
-
-    try {
-        const res = await fetch(`/api/products/${encodeURIComponent(id)}`, {
-            method: 'PUT',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(body)
-        });
-        const data = await res.json();
-        if (data.success) {
-            closeEditProductModal();
-            await loadProductsFromDb();
-            renderCatalog();
-            renderHomeFeatured();
-            renderAdminProductList();
-            alert('Garment updated successfully!');
-        } else {
-            alert('Failed to update: ' + data.message);
-        }
-    } catch(e) {
-        console.error(e);
-        alert('Error saving changes.');
-    }
 }
 
