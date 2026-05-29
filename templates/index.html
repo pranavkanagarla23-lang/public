@@ -754,8 +754,17 @@
                                 <input type="number" id="admin-add-stock" min="1" max="1000" required placeholder="5">
                             </div>
                             <div class="form-input">
-                                <label>Upload Garment Image File *</label>
-                                <input type="file" accept="image/*" id="productImage" required>
+                                <label>Garment Image *</label>
+                                <div style="display:flex; gap:0.5rem; margin-bottom:0.4rem;">
+                                    <button type="button" onclick="document.getElementById('img-tab-file').style.display='block'; document.getElementById('img-tab-url').style.display='none'; this.style.background='var(--accent)'; this.style.color='#fff'; document.getElementById('img-url-btn').style.background=''; document.getElementById('img-url-btn').style.color='';" style="flex:1; padding:0.4rem; border-radius:6px; border:1px solid var(--border-soft); cursor:pointer; font-size:0.8rem; background:var(--accent); color:#fff;">📁 Upload File</button>
+                                    <button type="button" id="img-url-btn" onclick="document.getElementById('img-tab-url').style.display='block'; document.getElementById('img-tab-file').style.display='none'; this.style.background='var(--accent)'; this.style.color='#fff'; document.getElementById('img-url-btn').previousElementSibling.style.background=''; document.getElementById('img-url-btn').previousElementSibling.style.color='';" style="flex:1; padding:0.4rem; border-radius:6px; border:1px solid var(--border-soft); cursor:pointer; font-size:0.8rem;">🔗 Paste URL</button>
+                                </div>
+                                <div id="img-tab-file">
+                                    <input type="file" accept="image/*" id="productImage">
+                                </div>
+                                <div id="img-tab-url" style="display:none;">
+                                    <input type="url" id="productImageUrl" placeholder="https://images.unsplash.com/..." style="width:100%; padding:0.5rem; border-radius:6px; border:1px solid var(--border-soft);">
+                                </div>
                             </div>
                             <div class="form-input">
                                 <label>Garment Description *</label>

@@ -1468,9 +1468,11 @@ async function handleAdminAddProduct(event) {
     const desc = document.getElementById("admin-add-desc").value;
     const details = document.getElementById("admin-add-details").value;
     const imageFile = document.getElementById("productImage").files[0];
+    const imageUrl = document.getElementById("productImageUrl") ? document.getElementById("productImageUrl").value.trim() : '';
     
-    if (!imageFile) {
-        alert("Please select a garment image file to upload.");
+    // Require either a file OR a URL
+    if (!imageFile && !imageUrl) {
+        alert("Please either upload a garment image file OR paste an image URL.");
         return;
     }
     
@@ -1479,27 +1481,36 @@ async function handleAdminAddProduct(event) {
         return;
     }
 
-    const formData = new FormData();
-    formData.append('title', title);
-    formData.append('department', dept);
-    formData.append('category', category);
-    if (mrp) formData.append('mrp', mrp);
-    formData.append('price', price);
-    formData.append('stock', stock);
-    formData.append('desc', desc);
-    formData.append('details', details);
-    formData.append('productImage', imageFile);
-    
     const hasSizesEl = document.querySelector('input[name="hasSizes"]:checked');
     const hasSizes = hasSizesEl ? hasSizesEl.value : 'no';
     const sizesVal = hasSizes === 'yes' ? document.getElementById('productSizes').value : '';
-    formData.append('sizes', sizesVal);
-    
+
     try {
-        const res = await fetch('/api/products', {
-            method: 'POST',
-            body: formData
-        });
+        let res;
+
+        if (imageFile) {
+            // Use FormData for file upload (goes to Cloudinary)
+            const formData = new FormData();
+            formData.append('title', title);
+            formData.append('department', dept);
+            formData.append('category', category);
+            if (mrp) formData.append('mrp', mrp);
+            formData.append('price', price);
+            formData.append('stock', stock);
+            formData.append('desc', desc);
+            formData.append('details', details);
+            formData.append('productImage', imageFile);
+            formData.append('sizes', sizesVal);
+            res = await fetch('/api/products', { method: 'POST', body: formData });
+        } else {
+            // Use JSON with image URL directly
+            res = await fetch('/api/products', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, department: dept, category, mrp, price, stock, desc, details, sizes: sizesVal, image: imageUrl })
+            });
+        }
+
         const data = await res.json();
         
         if (data.success) {
@@ -1508,7 +1519,7 @@ async function handleAdminAddProduct(event) {
             renderCatalog();
             renderHomeFeatured();
             renderCategoryFilters();
-            alert("'" + title + "' has been successfully uploaded and published to your secure cloud catalog!");
+            alert("'" + title + "' has been successfully published to your secure cloud catalog!");
             switchAdminTab('orders');
         } else {
             alert("Failed to publish: " + data.message);
