@@ -9,7 +9,3 @@ services:
         value: 3.11.5
       - key: FLASK_DEBUG
         value: "false"
-    disk:
-      name: sqlite-data
-      mountPath: /data
-      sizeGB: 1

@@ -3,3 +3,7 @@ __pycache__/
 database.db
 .git/
 tunnel_url.txt
+.env
+*.md
+migrate_backend.py
+deploy.py
