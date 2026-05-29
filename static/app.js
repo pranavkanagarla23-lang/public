@@ -1381,6 +1381,34 @@ function switchAdminTab(tabName) {
     }
 }
 
+function renderAdminProductList() {
+    const container = document.getElementById('admin-product-list');
+    if (!container) return;
+
+    if (!PRODUCTS || PRODUCTS.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-secondary); font-size:0.85rem; text-align:center;">No garments in catalog yet.</p>';
+        return;
+    }
+
+    // Render immediately, no loading state
+    container.innerHTML = PRODUCTS.map(p => {
+        // High contrast buttons for Edit and Delete
+        return `
+        <div style="display:flex; align-items:center; gap:1rem; background:var(--bg-primary); border:1px solid var(--border-soft); border-radius:8px; padding:0.8rem; margin-bottom:0.6rem;">
+            <img src="${Array.isArray(p.images) ? p.images[0] : (p.image || 'https://via.placeholder.com/60')}" style="width:60px; height:60px; object-fit:cover; border-radius:6px; flex-shrink:0;" onerror="this.src='https://via.placeholder.com/60'">
+            <div style="flex:1; min-width:0;">
+                <p style="font-weight:700; font-size:0.9rem; margin:0 0 0.2rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHTML(p.title)}</p>
+                <p style="font-size:0.75rem; color:var(--text-secondary); margin:0;">₹${parseFloat(p.price).toFixed(2)} &bull; Stock: ${p.stock} &bull; ${p.department}</p>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:0.4rem; flex-shrink:0;">
+                <button class="btn" onclick="openEditForm('${p.id.replace(/'/g, "\\'")}')" style="background:#fff; border:2px solid #3b82f6; color:#2563eb; font-weight:700; padding:0.3rem 0.6rem; border-radius:4px; font-size:0.75rem; cursor:pointer;">✎ Edit</button>
+                <button class="btn" onclick="adminDeleteProduct('${p.id.replace(/'/g, "\\'")}')" style="background:#fff; border:2px solid #ef4444; color:#dc2626; font-weight:700; padding:0.3rem 0.6rem; border-radius:4px; font-size:0.75rem; cursor:pointer;">🗑 Delete</button>
+            </div>
+        </div>
+        `;
+    }).join('');
+}
+
 async function renderAdminOrders() {
     const container = document.getElementById("admin-orders-list-container");
     if (!container) return;
