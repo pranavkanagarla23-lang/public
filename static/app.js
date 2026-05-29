@@ -10,14 +10,26 @@ const APP_STATE = {
     filters: {
         department: 'all',
         category: 'all',
-        maxPrice: 350,
+        maxPrice: 10000,
         searchQuery: ''
     },
     sortBy: 'featured',
     adminLoggedIn: false
 };
 
-// Zero-config SQLite database API URL
+function escapeHTML(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>'"]/g, 
+        tag => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        }[tag]));
+}
+
+// Initializing Product Database API URL
 const DB_URL = "/api/products";
 
 // Fallback luxury default products (Original list)
@@ -264,19 +276,19 @@ async function loadProductsFromDb() {
 }
 
 async function publishProductsToDb() {
-    alert("Success! Your products are stored directly in your secure SQLite database. All updates are live instantly!");
+    alert("Success! Your products are stored directly in your secure cloud database. All updates are live instantly!");
 }
 
 async function resetDbProducts() {
     if (confirm("Are you sure you want to reset your inventory back to the 12 default luxury garments? All custom items will be deleted.")) {
         try {
-            const res = await fetch('/api/products/reset', { method: 'POST' });
+            const res = await fetch('/api/products/reset', { method: 'POST', headers: { 'X-Admin-Key': localStorage.getItem('adminKey') || '' } });
             if (res.ok) {
                 await loadProductsFromDb();
                 renderCatalog();
                 renderHomeFeatured();
                 renderCategoryFilters();
-                alert("Catalog successfully reset to factory defaults and synced to SQLite!");
+                alert("Catalog successfully reset to factory defaults and synced to the cloud!");
             }
         } catch (e) {
             alert("Inventory reset failed.");
@@ -371,33 +383,49 @@ function getProductCardHTML(product) {
     
     // Check if store owner is logged in to append delete controls
     const adminDeleteButton = APP_STATE.adminLoggedIn ? `
-        <button class="btn btn-outline" onclick="event.stopPropagation(); adminDeleteProduct('${product.id}')" style="width:100%; margin-top:0.8rem; background-color:#FDF0F0; border-color:#D62F2F; color:#D62F2F; font-size:0.75rem; font-weight:700; padding:0.4rem;">
+        <button class="btn btn-outline" onclick="event.stopPropagation(); adminDeleteProduct('${encodeURIComponent(product.id)}')" style="width:100%; margin-top:0.8rem; background-color:#FDF0F0; border-color:#D62F2F; color:#D62F2F; font-size:0.75rem; font-weight:700; padding:0.4rem;">
             <i data-lucide="trash-2" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:2px;"></i> Delete Garment
         </button>
     ` : '';
     
+    const mrp = parseFloat(product.mrp);
+    const price = parseFloat(product.price);
+    let discountBadge = '';
+    if (mrp && mrp > price) {
+        const pct = Math.round(((mrp - price) / mrp) * 100);
+        discountBadge = `${pct}% OFF`;
+    }
+    
     return `
         <div class="product-card" data-id="${product.id}">
             ${product.tag ? `<span class="card-tag">${product.tag}</span>` : ''}
-            <button class="card-wishlist-toggle ${wishClass}" onclick="toggleWishlistState('${product.id}')" title="Add to Wishlist">
+            <button class="card-wishlist-toggle ${wishClass}" onclick="toggleWishlistState('${encodeURIComponent(product.id)}')" title="Add to Wishlist">
                 <i data-lucide="heart"></i>
             </button>
             <div class="product-image-wrapper">
                 <img src="${product.image}" alt="${product.title}" class="product-img">
                 <div class="product-card-overlay">
-                    <button class="card-btn" onclick="openProductQuickView('${product.id}')">
+                    <button class="card-btn" onclick="openProductQuickView('${encodeURIComponent(product.id)}')">
                         <i data-lucide="eye"></i> Quick View
                     </button>
-                    <button class="card-btn add-cart-btn" onclick="quickAddToCart('${product.id}')">
+                    <button class="card-btn add-cart-btn" onclick="quickAddToCart('${encodeURIComponent(product.id)}')">
                         <i data-lucide="shopping-bag"></i> Buy Now
                     </button>
                 </div>
             </div>
-            <div class="product-info" onclick="openProductQuickView('${product.id}')" style="cursor:pointer;">
+            <div class="product-info" onclick="openProductQuickView('${encodeURIComponent(product.id)}')" style="cursor:pointer;">
                 <span class="product-dept-lbl">${product.department === 'mens' ? 'Menswear' : product.department === 'womens' ? 'Ladieswear' : 'Kidswear'} • ${product.category}</span>
                 <h3 class="product-title">${product.title}</h3>
-                <div class="product-card-bottom">
-                    <span class="product-price">₹${product.price.toFixed(2)}</span>
+            <div class="product-card-bottom">
+                    ${discountBadge ? `
+                        <div style="display:flex; flex-direction:column; gap:2px;">
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <span class="product-price" style="color:var(--text-primary);">&#8377;${price.toFixed(0)}</span>
+                                <span style="font-size:0.75rem; text-decoration:line-through; color:var(--text-secondary);">&#8377;${mrp.toFixed(0)}</span>
+                            </div>
+                            <span style="font-size:0.7rem; font-weight:700; color:#fff; background:#D62F2F; border-radius:3px; padding:1px 5px; letter-spacing:0.03em;">${discountBadge}</span>
+                        </div>
+                    ` : `<span class="product-price">&#8377;${price.toFixed(2)}</span>`}
                     <div class="product-rating">
                         ${ratingStars}
                         <span>(${product.reviewsCount})</span>
@@ -500,7 +528,7 @@ function renderActiveChips() {
     if (APP_STATE.filters.category !== 'all') {
         chips.push({ key: 'category', label: `Cat: ${APP_STATE.filters.category}` });
     }
-    if (APP_STATE.filters.maxPrice < 350) {
+    if (APP_STATE.filters.maxPrice < 10000) {
         chips.push({ key: 'price', label: `Under ₹${APP_STATE.filters.maxPrice}` });
     }
     if (APP_STATE.filters.searchQuery) {
@@ -527,9 +555,9 @@ function removeFilterChip(key) {
         const radio = document.querySelector(`input[name="cat-filter"][value="all"]`);
         if (radio) radio.checked = true;
     } else if (key === 'price') {
-        APP_STATE.filters.maxPrice = 350;
-        document.getElementById("price-range-input").value = 350;
-        document.getElementById("price-max-val").textContent = '₹350';
+        APP_STATE.filters.maxPrice = 10000;
+        document.getElementById("price-range-input").value = 10000;
+        document.getElementById("price-max-val").textContent = '₹10000';
     } else if (key === 'search') {
         APP_STATE.filters.searchQuery = '';
         document.getElementById("search-input").value = '';
@@ -609,7 +637,7 @@ function filterDepartment(dept) {
 function clearAllFilters() {
     APP_STATE.filters.department = 'all';
     APP_STATE.filters.category = 'all';
-    APP_STATE.filters.maxPrice = 350;
+    APP_STATE.filters.maxPrice = 10000;
     APP_STATE.filters.searchQuery = '';
     APP_STATE.sortBy = 'featured';
 
@@ -620,8 +648,8 @@ function clearAllFilters() {
     const deptRadio = document.querySelector('input[name="dept-filter"][value="all"]');
     if (deptRadio) deptRadio.checked = true;
     
-    document.getElementById("price-range-input").value = 350;
-    document.getElementById("price-max-val").textContent = '₹350';
+    document.getElementById("price-range-input").value = 10000;
+    document.getElementById("price-max-val").textContent = '₹10000';
 
     renderCategoryFilters();
     renderCatalog();
@@ -853,7 +881,13 @@ function renderWishlistDrawer() {
                 <img src="${item.image}" alt="${item.title}" class="wishlist-item-image">
                 <div class="wishlist-item-details">
                     <h4 class="wishlist-item-title">${item.title}</h4>
-                    <span class="wishlist-item-price">₹${item.price.toFixed(2)}</span>
+                    ${(item.mrp && item.mrp > item.price) ? `
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <span class="wishlist-item-price">&#8377;${item.price.toFixed(2)}</span>
+                            <span style="font-size:0.75rem;text-decoration:line-through;color:var(--text-secondary);">&#8377;${item.mrp.toFixed(2)}</span>
+                            <span style="font-size:0.68rem;font-weight:700;color:#fff;background:#D62F2F;border-radius:3px;padding:1px 4px;">-${Math.round((item.mrp - item.price) / item.mrp * 100)}%</span>
+                        </div>
+                    ` : `<span class="wishlist-item-price">&#8377;${item.price.toFixed(2)}</span>`}
                 </div>
                 <div class="wishlist-item-actions">
                     <button class="wishlist-add-cart-btn" onclick="toggleWishlist(false); quickAddToCart('${item.id}')">Add Bag</button>
@@ -912,7 +946,15 @@ function openProductQuickView(productId) {
             <h1 class="modal-title">${p.title}</h1>
             
             <div class="modal-price-rating">
-                <span class="modal-price">₹${p.price.toFixed(2)}</span>
+                ${(p.mrp && p.mrp > p.price) ? `
+                    <div style="display:flex; flex-direction:column; gap:4px;">
+                        <div style="display:flex; align-items:baseline; gap:10px;">
+                            <span class="modal-price" style="color:var(--text-primary);">&#8377;${p.price.toFixed(2)}</span>
+                            <span style="font-size:0.9rem; text-decoration:line-through; color:var(--text-secondary);">MRP &#8377;${p.mrp.toFixed(2)}</span>
+                        </div>
+                        <span style="font-size:0.78rem; font-weight:700; color:#fff; background:#D62F2F; border-radius:4px; padding:2px 8px; display:inline-block; letter-spacing:0.04em;">YOU SAVE &#8377;${(p.mrp - p.price).toFixed(2)} (${Math.round((p.mrp - p.price) / p.mrp * 100)}% OFF)</span>
+                    </div>
+                ` : `<span class="modal-price">&#8377;${p.price.toFixed(2)}</span>`}
                 <div class="product-rating">
                     ${stars}
                     <span>(${p.reviewsCount} reviews)</span>
@@ -1136,12 +1178,10 @@ function submitFinalOrder() {
         customer_phone: checkoutShippingDetails.phone,
         delivery_address: `${checkoutShippingDetails.address}, ${checkoutShippingDetails.city}, ${checkoutShippingDetails.zip} (Email: ${checkoutShippingDetails.email})`,
         order_details: APP_STATE.cart.map(item => ({
-            title: item.product.title,
+            product_id: item.product.id,
             size: item.size,
-            qty: item.qty,
-            price: item.product.price
-        })),
-        total_amount: subtotal
+            qty: item.qty
+        }))
     };
 
     // Send order to SQLite via backend API
@@ -1257,7 +1297,7 @@ function handleAdminLogin(event) {
     const pin = document.getElementById("admin-pin-input").value;
     const errorEl = document.getElementById("admin-login-error");
 
-    if (pin === "shanmukha2026") {
+    if (true) { // Handled by server session now
         errorEl.style.display = "none";
         APP_STATE.adminLoggedIn = true;
         
@@ -1274,6 +1314,7 @@ function handleAdminLogin(event) {
         // Reset login input
         document.getElementById("admin-pin-input").value = "";
     } else {
+        errorEl.textContent = "Invalid Access Key.";
         errorEl.style.display = "block";
     }
 }
@@ -1328,7 +1369,7 @@ async function renderAdminOrders() {
     if (!container) return;
 
     try {
-        const res = await fetch('/api/orders');
+        const res = await fetch('/api/orders', { method: 'GET' });
         if (!res.ok) throw new Error("Could not fetch orders");
         const orders = await res.json();
 
@@ -1350,18 +1391,18 @@ async function renderAdminOrders() {
             return `
             <div style="background-color:var(--bg-tertiary); border:1px solid var(--border-soft); padding:1rem; border-radius:4px; font-size:0.8rem; display:flex; flex-direction:column; gap:0.4rem;">
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-soft); padding-bottom:0.4rem; margin-bottom:0.4rem;">
-                    <span style="font-weight:700; color:var(--color-orange-dark);">${order.order_id}</span>
-                    <span style="color:var(--text-secondary); font-size:0.75rem;">Status: <strong style="color:${statusColor};">${order.status}</strong></span>
+                    <span style="font-weight:700; color:var(--color-orange-dark);">${escapeHTML(order.order_id)}</span>
+                    <span style="color:var(--text-secondary); font-size:0.75rem;">Status: <strong style="color:${statusColor};">${escapeHTML(order.status)}</strong></span>
                 </div>
-                <p><strong>Customer:</strong> ${order.customer_name}</p>
-                <p><strong>Phone:</strong> ${order.customer_phone}</p>
-                <p><strong>Delivery Address:</strong> ${order.delivery_address}</p>
+                <p><strong>Customer:</strong> ${escapeHTML(order.customer_name)}</p>
+                <p><strong>Phone:</strong> ${escapeHTML(order.customer_phone)}</p>
+                <p><strong>Delivery Address:</strong> ${escapeHTML(order.delivery_address)}</p>
                 <div style="background-color:var(--bg-secondary); padding:0.5rem; border-radius:3px; margin:0.3rem 0;">
                     <p style="font-weight:700; border-bottom:1px solid #EEE; padding-bottom:0.2rem; margin-bottom:0.2rem; font-size:0.75rem;">Items Purchased:</p>
                     <ul style="list-style:none; padding-left:0; display:flex; flex-direction:column; gap:0.25rem;">
                         ${order.order_details.map(item => `
                             <li style="display:flex; justify-content:space-between;">
-                                <span>${item.title} (Size: ${item.size}) x ${item.qty}</span>
+                                <span>${escapeHTML(item.title)} (Size: ${escapeHTML(item.size)}) x ${item.qty}</span>
                                 <span>₹${(item.price * item.qty).toFixed(2)}</span>
                             </li>
                         `).join('')}
@@ -1395,8 +1436,9 @@ async function renderAdminOrders() {
 
 async function fulfillOrder(orderId) {
     try {
-        const res = await fetch(`/api/orders/${orderId}/fulfill`, { method: 'PUT' });
+        const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}/fulfill`, { method: 'PUT' });
         if (res.ok) {
+            alert("Order marked as delivered successfully!");
             renderAdminOrders();
         }
     } catch (e) {
@@ -1405,7 +1447,7 @@ async function fulfillOrder(orderId) {
 }
 
 async function clearAllOrders() {
-    if (confirm("Are you sure you want to clear your entire order history from the SQLite database? This cannot be undone.")) {
+    if (confirm("Are you sure you want to clear your entire order history from the cloud database? This cannot be undone.")) {
         try {
             const res = await fetch('/api/orders/clear', { method: 'POST' });
             if (res.ok) {
@@ -1423,6 +1465,8 @@ async function handleAdminAddProduct(event) {
     const title = document.getElementById("admin-add-title").value;
     const dept = document.getElementById("admin-add-dept").value;
     const category = document.getElementById("admin-add-category").value;
+    const mrpRaw = document.getElementById("admin-add-mrp").value;
+    const mrp = mrpRaw ? parseFloat(mrpRaw) : null;
     const price = parseFloat(document.getElementById("admin-add-price").value);
     const stock = parseInt(document.getElementById("admin-add-stock").value);
     const desc = document.getElementById("admin-add-desc").value;
@@ -1433,17 +1477,28 @@ async function handleAdminAddProduct(event) {
         alert("Please select a garment image file to upload.");
         return;
     }
+    
+    if (mrp && mrp <= price) {
+        alert("MRP must be greater than the Selling Price to show a discount. Leave MRP blank if there's no discount.");
+        return;
+    }
 
     const formData = new FormData();
     formData.append('title', title);
     formData.append('department', dept);
     formData.append('category', category);
+    if (mrp) formData.append('mrp', mrp);
     formData.append('price', price);
     formData.append('stock', stock);
     formData.append('desc', desc);
     formData.append('details', details);
     formData.append('productImage', imageFile);
-
+    
+    const hasSizesEl = document.querySelector('input[name="hasSizes"]:checked');
+    const hasSizes = hasSizesEl ? hasSizesEl.value : 'no';
+    const sizesVal = hasSizes === 'yes' ? document.getElementById('productSizes').value : '';
+    formData.append('sizes', sizesVal);
+    
     try {
         const res = await fetch('/api/products', {
             method: 'POST',
@@ -1457,7 +1512,7 @@ async function handleAdminAddProduct(event) {
             renderCatalog();
             renderHomeFeatured();
             renderCategoryFilters();
-            alert("'" + title + "' has been successfully uploaded and published to your secure SQLite catalog!");
+            alert("'" + title + "' has been successfully uploaded and published to your secure cloud catalog!");
             switchAdminTab('orders');
         } else {
             alert("Failed to publish: " + data.message);
@@ -1469,9 +1524,9 @@ async function handleAdminAddProduct(event) {
 }
 
 async function adminDeleteProduct(productId) {
-    if (confirm("Are you sure you want to delete this garment from your secure SQLite catalog? This will take it off the shelves immediately.")) {
+    if (confirm("Are you sure you want to delete this garment from your secure cloud catalog? This will take it off the shelves immediately.")) {
         try {
-            const res = await fetch(`/api/products/${productId}`, { method: 'DELETE' });
+            const res = await fetch(`/api/products/${encodeURIComponent(productId)}`, { method: 'DELETE' });
             const data = await res.json();
             if (data.success) {
                 await loadProductsFromDb();
@@ -1575,7 +1630,7 @@ async function fetchCustomerOrders(phone) {
     resultsContainer.innerHTML = `<div style="text-align: center; padding: 1rem;"><span class="spinner" style="display: inline-block; position: static; margin: 0;"></span> Retrieving orders...</div>`;
     
     try {
-        const res = await fetch(`/api/orders/track/${encodeURIComponent(phone)}`);
+        const res = await fetch(`/api/my/orders`);
         if (!res.ok) throw new Error("Server error fetching tracked orders.");
         
         const orders = await res.json();
@@ -1604,7 +1659,7 @@ async function fetchCustomerOrders(phone) {
             return `
             <div style="background-color: var(--bg-tertiary); border: 1px solid var(--border-soft); padding: 1rem; border-radius: 4px; font-size: 0.8rem; display: flex; flex-direction: column; gap: 0.4rem; text-align: left;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-soft); padding-bottom: 0.4rem; margin-bottom: 0.4rem;">
-                    <span style="font-weight: 700; color: var(--color-orange-dark);">${order.order_id}</span>
+                    <span style="font-weight: 700; color: var(--color-orange-dark);">${escapeHTML(order.order_id)}</span>
                     <span style="font-size: 0.75rem; font-weight: 700; color: ${statusColor};">
                         ${statusLabel}
                     </span>
@@ -1614,7 +1669,7 @@ async function fetchCustomerOrders(phone) {
                     <ul style="list-style: none; padding-left: 0; display: flex; flex-direction: column; gap: 0.25rem;">
                         ${order.order_details.map(item => `
                             <li style="display: flex; justify-content: space-between;">
-                                <span>${item.title} (Size: ${item.size}) x ${item.qty}</span>
+                                <span>${escapeHTML(item.title)} (Size: ${escapeHTML(item.size)}) x ${item.qty}</span>
                                 <span>₹${(item.price * item.qty).toFixed(2)}</span>
                             </li>
                         `).join('')}
@@ -1682,3 +1737,25 @@ function switchLoginTab(mode) {
     // Clear errors when switching
     document.getElementById("customer-login-error").style.display = "none";
 }
+
+
+
+// Add Sizes Toggle Listener
+document.addEventListener('DOMContentLoaded', () => {
+    const hasSizesRadios = document.querySelectorAll('input[name="hasSizes"]');
+    const sizesContainer = document.getElementById('sizesInputContainer');
+    const sizesInput = document.getElementById('productSizes');
+    if (hasSizesRadios.length > 0) {
+        hasSizesRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                if (e.target.value === 'yes') {
+                    sizesContainer.classList.remove('hidden');
+                } else {
+                    sizesContainer.classList.add('hidden');
+                    sizesInput.value = '';
+                }
+            });
+        });
+    }
+});
+

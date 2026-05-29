@@ -9,15 +9,15 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <!-- Core Style -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
     <!-- Global Luxury Top Bar -->
-    <div class="top-bar">
-        <p>Complimentary Express Shipping on Orders Over ₹150 &nbsp;•&nbsp; Discover Shanmukha Gold Membership</p>
+    <div class="top-bar" style="display:flex; justify-content:center; align-items:center;">
+        <p><a href="https://www.youtube.com/@shanmukafashionselurupadu" target="_blank" rel="noopener noreferrer" class="hover:text-gray-300 transition-colors cursor-pointer" style="text-decoration: underline;">▶️ Click here to watch our exclusive video catalog on YouTube</a></p>
     </div>
 
     <!-- Main Navigation Bar (Glassmorphic) -->
@@ -25,7 +25,7 @@
         <div class="header-container">
             <!-- Brand Logo & Name -->
             <div class="brand-logo-area" onclick="navigateTo('home')">
-                <img src="logo.png" alt="Shanmukha Fashions Logo" class="brand-logo">
+                <img src="/static/logo.png" alt="Shanmukha Fashions Logo" class="brand-logo">
                 <div class="brand-text">
                     <span class="brand-name">SHANMUKHA</span>
                     <span class="brand-sub">FASHIONS</span>
@@ -229,12 +229,12 @@
                             <div class="price-display">
                                 <span id="price-min-val">₹0</span>
                                 <span>-</span>
-                                <span id="price-max-val">₹350</span>
+                                <span id="price-max-val">₹10000</span>
                             </div>
-                            <input type="range" id="price-range-input" min="0" max="350" value="350" step="10" oninput="handlePriceSlider(this.value)" onchange="handleFilterChange()">
+                            <input type="range" id="price-range-input" min="0" max="10000" value="10000" step="10" oninput="handlePriceSlider(this.value)" onchange="handleFilterChange()">
                             <div class="price-bounds">
                                 <span>₹0</span>
-                                <span>₹350</span>
+                                <span>₹10000</span>
                             </div>
                         </div>
                     </div>
@@ -574,7 +574,7 @@
         <div class="footer-links-grid">
             <div class="footer-brand-bio">
                 <div class="brand-logo-area">
-                    <img src="logo.png" alt="Shanmukha Fashions Logo" class="footer-logo">
+                    <img src="/static/logo.png" alt="Shanmukha Fashions Logo" class="footer-logo">
                     <span class="brand-name">SHANMUKHA FASHIONS</span>
                 </div>
                 <p class="brand-bio-desc">Handcrafted tailoring, curated fine linens, silks, and luxury knitwear designs that outlive passing trends.</p>
@@ -594,6 +594,7 @@
             </div>
             <div class="footer-col">
                 <h4>Support</h4>
+                <a href="tel:+917013561439" class="text-gray-300 hover:text-white transition-colors cursor-pointer" style="display: block; margin-bottom: 0.5rem;">📞 +91 70135 61439</a>
                 <a href="#" onclick="alert('Email us at care@shanmukhafashions.com')">Customer Relations Care</a>
                 <a href="#" onclick="alert('Complimentary premium courier shipping with real-time tracking.')">Shipping & Delivery Info</a>
                 <a href="#" onclick="alert('We offer 30-day premium return packaging.')">Returns & Luxury Exchange</a>
@@ -627,9 +628,9 @@
                 <form id="admin-login-form" onsubmit="handleAdminLogin(event)">
                     <div class="form-input">
                         <label>Owner Access Key *</label>
-                        <input type="password" id="admin-pin-input" required placeholder="Enter Key (default: shanmukha2026)" style="text-align:center; font-size:1.1rem; letter-spacing:0.15em;">
+                        <input type="password" id="admin-pin-input" required placeholder="Enter Secure PIN" style="text-align:center; font-size:1.1rem; letter-spacing:0.15em;">
                     </div>
-                    <p id="admin-login-error" style="display:none; color:#B12704; font-size:0.8rem; font-weight:700; text-align:center; margin-bottom:1rem;">Invalid Access Key. Try 'shanmukha2026'.</p>
+                    <p id="admin-login-error" style="display:none; color:#B12704; font-size:0.8rem; font-weight:700; text-align:center; margin-bottom:1rem;">Invalid Access Key.</p>
                     <button type="submit" class="btn btn-primary" style="width:100%;">Unlock Owner Dashboard</button>
                 </form>
             </div>
@@ -692,13 +693,28 @@
                         </div>
                         <div class="form-row split">
                             <div class="form-input">
-                                <label>Price (₹) *</label>
-                                <input type="number" id="admin-add-price" step="5" min="10" max="500" required placeholder="150">
+                                <label>MRP (₹) <span style="font-weight:400;font-size:0.78rem;color:var(--text-secondary)">(Original Price)</span></label>
+                                <input type="number" id="admin-add-mrp" step="5" min="10" max="99999" placeholder="e.g. 200">
                             </div>
                             <div class="form-input">
-                                <label>Available Stock *</label>
-                                <input type="number" id="admin-add-stock" min="1" max="100" required placeholder="5">
+                                <label>Selling Price (₹) *</label>
+                                <input type="number" id="admin-add-price" step="5" min="10" max="99999" required placeholder="e.g. 150">
                             </div>
+                        </div>
+                        <div class="form-input">
+                            <label>Does this item have multiple sizes?</label>
+                            <div style="display: flex; gap: 15px; margin-top: 5px;">
+                                <label style="display: flex; align-items: center; gap: 5px;"><input type="radio" name="hasSizes" value="yes"> Yes</label>
+                                <label style="display: flex; align-items: center; gap: 5px;"><input type="radio" name="hasSizes" value="no" checked> No</label>
+                            </div>
+                        </div>
+                        <div class="form-input hidden" id="sizesInputContainer">
+                            <label>Available Sizes</label>
+                            <input type="text" id="productSizes" placeholder="e.g. S, M, L, XL (leave blank if one-size)">
+                        </div>
+                        <div class="form-input">
+                            <label>Available Stock *</label>
+                            <input type="number" id="admin-add-stock" min="1" max="100" required placeholder="5">
                         </div>
                         <div class="form-input">
                             <label>Upload Garment Image File *</label>
@@ -776,6 +792,6 @@
     </div>
 
     <!-- Core Logic Application Javascript -->
-    <script src="app.js"></script>
+    <script src="/static/app.js"></script>
 </body>
 </html>

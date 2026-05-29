@@ -1,13 +1,50 @@
 import os
-import sqlite3
-import json
-from flask import Flask, request, jsonify, render_template, send_from_directory
-from flask_cors import CORS
 
-app = Flask(__name__, static_folder='.', static_url_path='', template_folder='.')
-CORS(app)
+import os
+import psycopg2
+import psycopg2.extras
+import cloudinary
+import cloudinary.uploader
+from dotenv import load_dotenv
+load_dotenv()
+
+# Configure Cloudinary if URL is provided
+if os.environ.get('CLOUDINARY_URL'):
+    pass # automatically picked up by SDK
+
+import json
+from flask import Flask, request, jsonify, render_template, send_from_directory, session
+from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
+app = Flask(__name__, static_folder='static', template_folder='templates')
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-fallback-secret-key')
+
+CORS(app, supports_credentials=True, resources={
+    r"/api/*": {
+        "origins": [
+            "https://shanmukha-fashions.onrender.com",
+            "http://localhost:5000",
+            "http://127.0.0.1:5000"
+        ]
+    }
+})
+
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    storage_uri="memory://"
+)
 
 DB_PATH = '/data/database.db' if (os.path.exists('/data') or os.environ.get('RENDER')) else 'database.db'
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'shanmukha2026')
+
+# Startup Checks
+if not os.environ.get('DATABASE_URL'):
+    print("WARNING: DATABASE_URL environment variable is missing!", flush=True)
+if not os.environ.get('CLOUDINARY_URL'):
+    print("WARNING: CLOUDINARY_URL environment variable is missing!", flush=True)
 
 # Fallback luxury default products (Original list)
 DEFAULT_PRODUCTS = [
@@ -206,31 +243,40 @@ DEFAULT_PRODUCTS = [
 ]
 
 def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    db_url = os.environ.get('DATABASE_URL')
+    if db_url and db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
+        
+    try:
+        conn = psycopg2.connect(db_url)
+        return conn
+    except Exception as e:
+        print(f"Database Connection Error: {e}", flush=True)
+        raise e
 
 def init_db():
-    db_exists = os.path.exists(DB_PATH)
-    
     conn = get_db_connection()
     cursor = conn.cursor()
+    
+    cursor.execute("SELECT to_regclass('products')")
+    db_exists = cursor.fetchone()[0] is not None
     
     # 1. Product Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS products (
-            id TEXT PRIMARY KEY,
+            id VARCHAR PRIMARY KEY,
             title TEXT NOT NULL,
             department TEXT NOT NULL,
             category TEXT NOT NULL,
-            price REAL NOT NULL,
-            rating REAL DEFAULT 5.0,
+            mrp NUMERIC,
+            price NUMERIC NOT NULL,
+            rating NUMERIC DEFAULT 5.0,
             reviewsCount INTEGER DEFAULT 0,
             tag TEXT DEFAULT '',
             stock INTEGER DEFAULT 0,
             image TEXT NOT NULL,
             images TEXT NOT NULL,
-            desc TEXT NOT NULL,
+            "desc" TEXT NOT NULL,
             details TEXT NOT NULL,
             sizes TEXT NOT NULL
         )
@@ -239,30 +285,30 @@ def init_db():
     # 2. Order Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS orders (
-            order_id TEXT PRIMARY KEY,
+            order_id VARCHAR PRIMARY KEY,
             customer_name TEXT NOT NULL,
             customer_phone TEXT NOT NULL,
             delivery_address TEXT NOT NULL,
             order_details TEXT NOT NULL,
-            total_amount REAL NOT NULL,
+            total_amount NUMERIC NOT NULL,
             status TEXT DEFAULT 'Pending',
-            estimated_delivery TEXT
+            estimated_delivery TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
-    try:
-        cursor.execute("ALTER TABLE orders ADD COLUMN estimated_delivery TEXT")
-    except sqlite3.OperationalError:
-        pass
+
     
     # 3. Users Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
-            phone_number TEXT PRIMARY KEY,
+            phone_number VARCHAR PRIMARY KEY,
             password TEXT NOT NULL
         )
     ''')
     
+    # 4. Add mrp column to products if it doesn't exist
+    cursor.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS mrp NUMERIC")
+
     conn.commit()
     
     # Seed Products if empty AND database was just created
@@ -271,9 +317,9 @@ def init_db():
         if cursor.fetchone()[0] == 0:
             for p in DEFAULT_PRODUCTS:
                 cursor.execute('''
-                    INSERT INTO products (id, title, department, category, price, rating, reviewsCount, tag, stock, image, images, desc, details, sizes)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (p['id'], p['title'], p['department'], p['category'], p['price'], p['rating'], p['reviewsCount'], p['tag'], p['stock'], p['image'], p['images'], p['desc'], p['details'], p['sizes']))
+                    INSERT INTO products (id, title, department, category, mrp, price, rating, reviewsCount, tag, stock, image, images, "desc", details, sizes)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ''', (p['id'], p['title'], p['department'], p['category'], p.get('mrp'), p['price'], p['rating'], p['reviewsCount'], p['tag'], p['stock'], p['image'], p['images'], p['desc'], p['details'], p['sizes']))
             conn.commit()
             print("Database initialized and successfully seeded with 12 luxury products!")
     
@@ -287,21 +333,45 @@ init_db()
 def index():
     return render_template('index.html')
 
-# Send logo, app.js and style.css correctly
-@app.route('/<path:path>')
-def send_static(path):
-    # If the user requests app.js, style.css, or logo.png from the root directory
-    if path in ['app.js', 'style.css', 'logo.png', 'tunnel_url.txt']:
-        return send_from_directory('.', path)
-    return send_from_directory('.', path)
-
 # --- REST API ENDPOINTS ---
+from functools import wraps
+
+def admin_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if not session.get("admin"):
+            return jsonify({"success": False, "message": "Unauthorized"}), 401
+        return fn(*args, **kwargs)
+    return wrapper
+
+@app.post("/api/admin/login")
+@limiter.limit("3 per minute")
+def admin_login():
+    data = request.json or {}
+    pin = data.get('pin')
+    
+    # We use werkzeug for secure password checking in production, or fallback for old seeds
+    import werkzeug.security
+    # In a real system, you'd check a hashed password. 
+    # For now, we compare against the environment variable.
+    if pin == ADMIN_PASSWORD:
+        session["admin"] = True
+        return jsonify({"success": True})
+    return jsonify({"success": False, "message": "Invalid PIN"}), 401
+
+@app.post("/api/admin/logout")
+def admin_logout():
+    session.pop("admin", None)
+    return jsonify({"success": True})
+
+
+
 
 # 1. GET ALL PRODUCTS
 @app.route('/api/products', methods=['GET'])
 def get_products():
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cursor.execute("SELECT * FROM products")
     rows = cursor.fetchall()
     conn.close()
@@ -314,25 +384,28 @@ def get_products():
             "title": r["title"],
             "department": r["department"],
             "category": r["category"],
-            "price": r["price"],
-            "rating": r["rating"],
-            "reviewsCount": r["reviewsCount"],
+            "mrp": float(r["mrp"]) if r["mrp"] is not None else None,
+            "price": float(r["price"]) if r["price"] is not None else 0.0,
+            "rating": float(r["rating"]) if r["rating"] is not None else 0.0,
+            "reviewsCount": r["reviewscount"],
             "tag": r["tag"],
             "stock": r["stock"],
             "image": r["image"],
             "images": r["images"].split(',') if r["images"] else [r["image"]],
             "desc": r["desc"],
             "details": r["details"],
-            "sizes": r["sizes"].split(',')
+            "sizes": r["sizes"].split(',') if r["sizes"] else []
         })
     return jsonify(products)
 
 # 2. CREATE PRODUCT (ADMIN CRUD)
 @app.route('/api/products', methods=['POST'])
+@admin_required
 def add_product():
+        
     import time
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     
     product_id = f"p_{int(time.time() * 1000)}"
     
@@ -348,46 +421,50 @@ def add_product():
         dept = request.form.get('department', 'mens')
         category = request.form.get('category', 'Tops')
         price = float(request.form.get('price', 100.0))
+        mrp_raw = request.form.get('mrp')
+        mrp = float(mrp_raw) if mrp_raw else None
         stock = int(request.form.get('stock', 5))
         desc = request.form.get('desc', '')
         details = request.form.get('details', '')
+        sizes_val = request.form.get('sizes')
         
-        # Save image file to static/uploads/
-        uploads_dir = os.path.join('.', 'static', 'uploads')
-        if not os.path.exists(uploads_dir):
-            os.makedirs(uploads_dir)
-            
-        # Clean up filename to avoid directory traversal
-        original_ext = os.path.splitext(file.filename)[1]
-        filename = f"{product_id}{original_ext}"
-        filepath = os.path.join(uploads_dir, filename)
-        file.save(filepath)
-        
-        image_url = f"/static/uploads/{filename}"
+        # Upload to Cloudinary
+        if os.environ.get('CLOUDINARY_URL'):
+            upload_result = cloudinary.uploader.upload(file)
+            image_url = upload_result['secure_url']
+        else:
+            # Fallback if Cloudinary is not configured
+            image_url = "https://via.placeholder.com/500"
     else:
         # Fallback to JSON payload if any
-        data = request.json or {}
+        data = request.get_json(silent=True) or request.form or {}
         title = data.get('title', 'Curated Garment')
         dept = data.get('department', 'mens')
         category = data.get('category', 'Tops')
         price = float(data.get('price', 100.0))
+        mrp_raw = data.get('mrp')
+        mrp = float(mrp_raw) if mrp_raw else None
         stock = int(data.get('stock', 5))
         desc = data.get('desc', '')
         details = data.get('details', '')
         image_url = data.get('image', '')
+        sizes_val = data.get('sizes')
 
     images_str = image_url
-    sizes_str = '2Y,4Y,6Y,8Y' if dept == 'kids' else 'S,M,L,XL'
+    fallback_sizes = '2Y,4Y,6Y,8Y' if dept == 'kids' else 'S,M,L,XL'
+    sizes_str = sizes_val if sizes_val else "One Size"
+    sizes_str = sizes_val if sizes_val is not None else fallback_sizes
     
     try:
         cursor.execute('''
-            INSERT INTO products (id, title, department, category, price, rating, reviewsCount, tag, stock, image, images, desc, details, sizes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO products (id, title, department, category, mrp, price, rating, reviewsCount, tag, stock, image, images, "desc", details, sizes)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (
             product_id,
             title,
             dept,
             category,
+            mrp,
             price,
             5.0, # default rating
             0,   # default reviewsCount
@@ -403,40 +480,47 @@ def add_product():
         conn.close()
         return jsonify({"success": True, "message": "Garment successfully uploaded and published!"}), 201
     except Exception as e:
-        conn.close()
+        conn.rollback() if conn else None
+        print(f"Backend Error: {e}", flush=True)
         return jsonify({"success": False, "message": str(e)}), 500
 
 # 3. DELETE PRODUCT (ADMIN CRUD)
 @app.route('/api/products/<id>', methods=['DELETE'])
+@admin_required
 def delete_product(id):
+        
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM products WHERE id = ?", (id,))
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cursor.execute("DELETE FROM products WHERE id = %s", (id,))
     conn.commit()
     conn.close()
     return jsonify({"success": True, "message": "Garment successfully deleted!"})
 
 # 4. RESET PRODUCTS TO DEFAULTS
 @app.route('/api/products/reset', methods=['POST'])
+@admin_required
 def reset_products():
+        
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cursor.execute("DELETE FROM products")
     for p in DEFAULT_PRODUCTS:
         cursor.execute('''
-            INSERT INTO products (id, title, department, category, price, rating, reviewsCount, tag, stock, image, images, desc, details, sizes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (p['id'], p['title'], p['department'], p['category'], p['price'], p['rating'], p['reviewsCount'], p['tag'], p['stock'], p['image'], p['images'], p['desc'], p['details'], p['sizes']))
+            INSERT INTO products (id, title, department, category, mrp, price, rating, reviewsCount, tag, stock, image, images, "desc", details, sizes)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ''', (p['id'], p['title'], p['department'], p['category'], p.get('mrp'), p['price'], p['rating'], p['reviewsCount'], p['tag'], p['stock'], p['image'], p['images'], p['desc'], p['details'], p['sizes']))
     conn.commit()
     conn.close()
     return jsonify({"success": True, "message": "Catalog successfully reset to factory defaults!"})
 
 # 5. GET ALL ORDERS (ADMIN PORTAL)
 @app.route('/api/orders', methods=['GET'])
+@admin_required
 def get_orders():
+        
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM orders ORDER BY rowid DESC")
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cursor.execute("SELECT * FROM orders ORDER BY created_at DESC")
     rows = cursor.fetchall()
     conn.close()
     
@@ -448,64 +532,89 @@ def get_orders():
             "customer_phone": r["customer_phone"],
             "delivery_address": r["delivery_address"],
             "order_details": json.loads(r["order_details"]),
-            "total_amount": r["total_amount"],
+            "total_amount": float(r["total_amount"]) if r["total_amount"] is not None else 0.0,
             "status": r["status"],
             "estimated_delivery": r["estimated_delivery"] if "estimated_delivery" in r.keys() else None
         })
     return jsonify(orders)
 
-# 6. POST NEW ORDER (PAY ON DELIVERY)
 @app.route('/api/orders', methods=['POST'])
+@limiter.limit("5 per minute")
 def create_order():
     data = request.json
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     
     order_id = data.get('order_id')
     customer_name = data.get('customer_name')
     customer_phone = data.get('customer_phone')
     delivery_address = data.get('delivery_address')
-    order_details = json.dumps(data.get('order_details', []))
-    total_amount = float(data.get('total_amount', 0.0))
+    client_items = data.get('order_details', [])
     status = 'Pending'
     
     from datetime import datetime, timedelta
     estimated_delivery = (datetime.now() + timedelta(days=5)).strftime('%Y-%m-%d')
     
     try:
-        # Save order
+        total_amount = 0.0
+        final_order_details = []
+        
+        for item in client_items:
+            product_id = item.get('product_id')
+            qty = int(item.get('qty', 1))
+            size = item.get('size', 'One Size')
+            
+            cursor.execute("SELECT title, price, stock FROM products WHERE id = %s", (product_id,))
+            product = cursor.fetchone()
+            
+            if not product:
+                raise Exception(f"Product {product_id} not found")
+            if product['stock'] < qty:
+                raise Exception(f"Insufficient stock for {product['title']}. Available: {product['stock']}")
+                
+            item_price = float(product['price'])
+            total_amount += item_price * qty
+            
+            final_order_details.append({
+                "title": product['title'],
+                "size": size,
+                "qty": qty,
+                "price": item_price
+            })
+            
+            cursor.execute("UPDATE products SET stock = stock - %s WHERE id = %s", (qty, product_id))
+            
+        order_details_json = json.dumps(final_order_details)
+        
         cursor.execute('''
             INSERT INTO orders (order_id, customer_name, customer_phone, delivery_address, order_details, total_amount, status, estimated_delivery)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (order_id, customer_name, customer_phone, delivery_address, order_details, total_amount, status, estimated_delivery))
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        ''', (order_id, customer_name, customer_phone, delivery_address, order_details_json, total_amount, status, estimated_delivery))
         
-        # Update product stock levels
-        for item in data.get('order_details', []):
-            product_title = item.get('title')
-            qty = int(item.get('qty', 1))
-            cursor.execute("UPDATE products SET stock = MAX(0, stock - ?) WHERE title = ?", (qty, product_title))
-            
         conn.commit()
         conn.close()
         return jsonify({"success": True, "message": "Order created successfully!", "order_id": order_id}), 201
     except Exception as e:
+        if conn: conn.rollback()
         conn.close()
-        return jsonify({"success": False, "message": str(e)}), 500
+        return jsonify({"success": False, "message": str(e)}), 400
 
 # 7. FULFILL ORDER (MARK DELIVERED)
 @app.route('/api/orders/<id>/fulfill', methods=['PUT'])
+@admin_required
 def fulfill_order(id):
+        
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     
-    cursor.execute("SELECT status FROM orders WHERE order_id = ?", (id,))
+    cursor.execute("SELECT status FROM orders WHERE order_id = %s", (id,))
     row = cursor.fetchone()
     if not row:
         conn.close()
         return jsonify({"success": False, "message": "Order not found"}), 404
         
     try:
-        cursor.execute("UPDATE orders SET status = 'Delivered' WHERE order_id = ?", (id,))
+        cursor.execute("UPDATE orders SET status = 'Delivered' WHERE order_id = %s", (id,))
         conn.commit()
         conn.close()
         return jsonify({"success": True, "status": "Delivered"})
@@ -515,20 +624,26 @@ def fulfill_order(id):
 
 # 8. CLEAR ALL ORDERS (ADMIN ONLY)
 @app.route('/api/orders/clear', methods=['POST'])
+@admin_required
 def clear_orders():
+        
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cursor.execute("DELETE FROM orders")
     conn.commit()
     conn.close()
     return jsonify({"success": True, "message": "Order history cleared!"})
 
 # 9. CUSTOMER ORDER TRACKING
-@app.route('/api/orders/track/<phone_number>', methods=['GET'])
-def track_orders(phone_number):
+@app.route('/api/my/orders', methods=['GET'])
+def my_orders():
+    phone_number = session.get("customer_phone")
+    if not phone_number:
+        return jsonify({"success": False, "message": "Unauthorized. Please log in."}), 401
+
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM orders WHERE customer_phone = ? ORDER BY rowid DESC", (phone_number.strip(),))
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cursor.execute("SELECT * FROM orders WHERE customer_phone = %s ORDER BY created_at DESC", (phone_number.strip(),))
     rows = cursor.fetchall()
     conn.close()
     
@@ -540,7 +655,7 @@ def track_orders(phone_number):
             "customer_phone": r["customer_phone"],
             "delivery_address": r["delivery_address"],
             "order_details": json.loads(r["order_details"]),
-            "total_amount": r["total_amount"],
+            "total_amount": float(r["total_amount"]) if r["total_amount"] is not None else 0.0,
             "status": r["status"],
             "estimated_delivery": r["estimated_delivery"]
         })
@@ -561,11 +676,11 @@ def customer_login():
     password = password.strip()
     
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     
     try:
         # Check if user exists
-        cursor.execute("SELECT * FROM users WHERE phone_number = ?", (phone,))
+        cursor.execute("SELECT * FROM users WHERE phone_number = %s", (phone,))
         user = cursor.fetchone()
         
         if action == 'signup':
@@ -576,9 +691,10 @@ def customer_login():
             # Hash password and save
             from werkzeug.security import generate_password_hash
             hashed_pw = generate_password_hash(password)
-            cursor.execute("INSERT INTO users (phone_number, password) VALUES (?, ?)", (phone, hashed_pw))
+            cursor.execute("INSERT INTO users (phone_number, password) VALUES (%s, %s)", (phone, hashed_pw))
             conn.commit()
             conn.close()
+            session["customer_phone"] = phone
             return jsonify({"success": True, "message": "Account created and logged in successfully", "phone_number": phone}), 201
             
         else: # signin
@@ -597,6 +713,7 @@ def customer_login():
                 
             if is_valid:
                 conn.close()
+                session["customer_phone"] = phone
                 return jsonify({"success": True, "message": "Logged in successfully", "phone_number": phone}), 200
             else:
                 conn.close()
@@ -607,4 +724,4 @@ def customer_login():
         return jsonify({"success": False, "message": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=False)
