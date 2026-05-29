@@ -1809,43 +1809,89 @@ async function loadStats() {
 let revenueChartInstance, ordersChartInstance, statusChartInstance;
 async function loadAnalytics() {
     try {
-        const res = await fetch('/api/analytics');
-        const data = await res.json();
-        if(data.success) {
-            const labels = data.data.dates;
-            const revData = data.data.revenue;
-            const ordData = data.data.orders;
-            const statuses = data.data.statuses;
+        const [analyticsRes, ordersRes] = await Promise.all([
+            fetch('/api/analytics'),
+            fetch('/api/orders')
+        ]);
+        const analyticsData = await analyticsRes.json();
+        const orders = await ordersRes.json();
+
+        // ── Business Math ──────────────────────────────────────────────
+        // Total Revenue = sum of all order amounts
+        const totalRevenue = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
+
+        // Average Order Value (AOV) = Total Revenue / Number of Orders
+        const totalOrderCount = orders.length;
+        const aov = totalOrderCount > 0 ? (totalRevenue / totalOrderCount) : 0;
+
+        // Delivered Rate = Delivered Orders / Total Orders × 100
+        const deliveredCount = orders.filter(o => o.status === 'Delivered').length;
+        const deliveryRate = totalOrderCount > 0 ? ((deliveredCount / totalOrderCount) * 100).toFixed(1) : 0;
+
+        // Top Selling Items — count quantity of each product across all orders
+        const productSales = {};
+        orders.forEach(o => {
+            (o.order_details || []).forEach(item => {
+                if (!productSales[item.title]) productSales[item.title] = { qty: 0, revenue: 0 };
+                productSales[item.title].qty += item.qty || 1;
+                productSales[item.title].revenue += (item.price || 0) * (item.qty || 1);
+            });
+        });
+        const topProducts = Object.entries(productSales)
+            .sort((a, b) => b[1].qty - a[1].qty)
+            .slice(0, 5);
+
+        // ── Update KPI Cards ───────────────────────────────────────────
+        document.getElementById('kpi-revenue').textContent = `₹${totalRevenue.toFixed(2)}`;
+        document.getElementById('kpi-aov').textContent = `₹${aov.toFixed(2)}`;
+        document.getElementById('kpi-orders').textContent = totalOrderCount;
+        document.getElementById('kpi-delivery-rate').textContent = `${deliveryRate}%`;
+
+        // ── Top Products List ──────────────────────────────────────────
+        const topEl = document.getElementById('kpi-top-products');
+        if (topEl) {
+            topEl.innerHTML = topProducts.length === 0
+                ? '<p style="color:var(--text-secondary); font-size:0.8rem;">No sales data yet.</p>'
+                : topProducts.map(([name, data], i) => `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0; border-bottom:1px solid var(--border-soft); font-size:0.8rem;">
+                        <span><strong>#${i+1}</strong> ${escapeHTML(name)}</span>
+                        <span style="color:var(--text-secondary);">${data.qty} sold · ₹${data.revenue.toFixed(0)}</span>
+                    </div>`).join('');
+        }
+
+        // ── Charts ─────────────────────────────────────────────────────
+        if (analyticsData.success) {
+            const labels = analyticsData.data.dates;
+            const revData = analyticsData.data.revenue;
+            const ordData = analyticsData.data.orders;
+            const statuses = analyticsData.data.statuses;
 
             if (revenueChartInstance) revenueChartInstance.destroy();
             const revCtx = document.getElementById('revenueChart').getContext('2d');
             revenueChartInstance = new Chart(revCtx, {
                 type: 'line',
-                data: { labels: labels, datasets: [{ label: 'Revenue (₹)', data: revData, borderColor: '#C5A880', backgroundColor: 'rgba(197, 168, 128, 0.2)', fill: true, tension: 0.4 }] },
-                options: { responsive: true, maintainAspectRatio: false }
+                data: { labels, datasets: [{ label: 'Revenue (₹)', data: revData, borderColor: '#C5A880', backgroundColor: 'rgba(197,168,128,0.15)', fill: true, tension: 0.4, pointRadius: 3 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => '₹'+v } } } }
             });
 
             if (ordersChartInstance) ordersChartInstance.destroy();
             const ordCtx = document.getElementById('ordersChart').getContext('2d');
             ordersChartInstance = new Chart(ordCtx, {
                 type: 'bar',
-                data: { labels: labels, datasets: [{ label: 'Orders', data: ordData, backgroundColor: '#34495e', borderRadius: 4 }] },
-                options: { responsive: true, maintainAspectRatio: false }
+                data: { labels, datasets: [{ label: 'Orders', data: ordData, backgroundColor: '#34495e', borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
             });
 
             if (statusChartInstance) statusChartInstance.destroy();
             const statCtx = document.getElementById('statusChart').getContext('2d');
             statusChartInstance = new Chart(statCtx, {
                 type: 'doughnut',
-                data: {
-                    labels: Object.keys(statuses),
-                    datasets: [{ data: Object.values(statuses), backgroundColor: ['#FFB74D', '#81C784', '#e74c3c'] }]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
+                data: { labels: Object.keys(statuses), datasets: [{ data: Object.values(statuses), backgroundColor: ['#FFB74D', '#81C784', '#e74c3c'] }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } } }
             });
         }
     } catch (e) {
-        console.error("Failed to load analytics:", e);
+        console.error('Failed to load analytics:', e);
     }
 }
 

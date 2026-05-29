@@ -609,7 +609,7 @@
 
     <!-- ==================== PREMIUM INTERACTIVE OWNER / ADMIN PORTAL MODAL ==================== -->
     <div class="modal-overlay" id="admin-drawer-overlay" onclick="toggleAdminPanel(false)" style="z-index: 1050;">
-        <div class="modal-container" id="admin-drawer" onclick="event.stopPropagation()" style="max-width: 1000px; display: flex; flex-direction: column; overflow: hidden; max-height: 85vh; width: 90vw;">
+        <div class="modal-container" id="admin-drawer" onclick="event.stopPropagation()" style="max-width: 1000px; display: flex; flex-direction: column; overflow: hidden; height: 85vh; width: 90vw;">
             <div class="drawer-header" style="display: flex; justify-content: space-between; align-items: center; padding: 1.2rem; border-bottom: 1px solid var(--border-soft); background-color: var(--bg-tertiary);">
                 <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--text-primary);"><i data-lucide="lock"></i> Store Owner Portal</h3>
                 <button class="close-drawer-btn" onclick="toggleAdminPanel(false)" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;"><i data-lucide="x"></i></button>
@@ -628,8 +628,8 @@
                 </form>
             </div>
 
-            <!-- 2. OWNER DASHBOARD CONTENT (Sidebar Layout) -->
-            <div id="admin-dashboard-screen" style="display: none; height: 100%; flex-direction: row; flex: 1; overflow: hidden;">
+        <!-- 2. OWNER DASHBOARD CONTENT (Sidebar Layout) -->
+            <div id="admin-dashboard-screen" style="display: none; flex-direction: row; flex: 1; overflow: hidden; min-height: 0;">
                 <!-- Sidebar -->
                 <aside class="admin-sidebar" style="width: 250px; background: var(--bg-tertiary); border-right: 1px solid var(--border-soft); display: flex; flex-direction: column;">
                     <nav class="admin-sidebar-nav" style="flex: 1; padding: 1rem 0; display: flex; flex-direction: column; gap: 0.5rem;">
@@ -787,25 +787,50 @@
                     <!-- TAB: ANALYTICS -->
                     <div class="admin-tab-content" id="admin-tab-analytics-content" style="display: none;">
                         <h4 style="font-size:1.2rem; font-weight:700; margin-bottom:1.5rem;">Advanced Analytics</h4>
-                        
+
+                        <!-- KPI Summary Cards -->
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap:1rem; margin-bottom:2rem;">
+                            <div style="background:var(--bg-primary); border:1px solid var(--border-soft); border-left:4px solid var(--amazon-blue); border-radius:8px; padding:1.2rem;">
+                                <p style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:0.3rem;">Total Revenue</p>
+                                <h2 id="kpi-revenue" style="font-size:1.6rem; font-weight:700;">₹0</h2>
+                            </div>
+                            <div style="background:var(--bg-primary); border:1px solid var(--border-soft); border-left:4px solid #2ecc71; border-radius:8px; padding:1.2rem;">
+                                <p style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:0.3rem;">Avg. Order Value</p>
+                                <h2 id="kpi-aov" style="font-size:1.6rem; font-weight:700;">₹0</h2>
+                            </div>
+                            <div style="background:var(--bg-primary); border:1px solid var(--border-soft); border-left:4px solid var(--color-orange); border-radius:8px; padding:1.2rem;">
+                                <p style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:0.3rem;">Total Orders</p>
+                                <h2 id="kpi-orders" style="font-size:1.6rem; font-weight:700;">0</h2>
+                            </div>
+                            <div style="background:var(--bg-primary); border:1px solid var(--border-soft); border-left:4px solid #9b59b6; border-radius:8px; padding:1.2rem;">
+                                <p style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:0.3rem;">Delivered Rate</p>
+                                <h2 id="kpi-delivery-rate" style="font-size:1.6rem; font-weight:700;">0%</h2>
+                            </div>
+                        </div>
+
                         <div style="display: grid; grid-template-columns: 1fr; gap: 2rem;">
                             <!-- Revenue Chart -->
-                            <div class="chart-container" style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-soft);">
+                            <div class="chart-container" style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-soft); height:220px;">
                                 <h5 style="margin-bottom: 1rem;">Revenue (Last 30 Days)</h5>
                                 <canvas id="revenueChart"></canvas>
                             </div>
 
                             <!-- Orders Chart -->
-                            <div class="chart-container" style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-soft);">
+                            <div class="chart-container" style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-soft); height:220px;">
                                 <h5 style="margin-bottom: 1rem;">Orders (Last 30 Days)</h5>
                                 <canvas id="ordersChart"></canvas>
                             </div>
 
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
                                 <!-- Orders by Status -->
-                                <div class="chart-container" style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-soft);">
+                                <div class="chart-container" style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-soft); height:200px;">
                                     <h5 style="margin-bottom: 1rem;">Orders by Status</h5>
                                     <canvas id="statusChart"></canvas>
+                                </div>
+                                <!-- Top Products -->
+                                <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-soft);">
+                                    <h5 style="margin-bottom: 1rem;">Top Selling Items</h5>
+                                    <div id="kpi-top-products"><p style="color:var(--text-secondary); font-size:0.8rem;">Loading...</p></div>
                                 </div>
                             </div>
                         </div>
