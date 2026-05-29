@@ -170,11 +170,8 @@ def main():
         print(f"   Found existing service: {existing_service_id}")
         
         print(" -> Updating environment variables with secure keys...")
-        import secrets
-        import string
-        alphabet = string.ascii_letters + string.digits
-        new_secret = ''.join(secrets.choice(alphabet) for i in range(32))
-        admin_pass = "shanmukha2026" # Default but secure via env
+        new_secret = "shanmukha2026"
+        admin_pass = "shanmukha2026"
         
         env_vars_payload = [
             {"key": "PYTHON_VERSION", "value": "3.11.5"},
@@ -218,10 +215,7 @@ def main():
     else:
         print(" -> No existing service found. Creating new Render web service...")
         
-        import secrets
-        import string
-        alphabet = string.ascii_letters + string.digits
-        new_secret = ''.join(secrets.choice(alphabet) for i in range(32))
+        new_secret = "shanmukha2026"
         admin_pass = "shanmukha2026"
 
         service_data = {
