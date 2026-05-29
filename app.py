@@ -1,6 +1,4 @@
 import os
-
-import os
 import psycopg2
 import psycopg2.extras
 import cloudinary
@@ -661,10 +659,13 @@ def get_dashboard_stats():
         
         conn.close()
         return jsonify({
-            "total_orders": total_orders,
-            "today_orders": today_orders,
-            "total_revenue": total_revenue,
-            "low_stock_items": low_stock
+            "success": True,
+            "data": {
+                "total_orders": total_orders,
+                "today_orders": today_orders,
+                "revenue": total_revenue,
+                "low_stock_items": low_stock
+            }
         })
     except Exception as e:
         if conn: conn.close()
@@ -804,17 +805,25 @@ def get_analytics():
 
         conn.close()
         
-        # Convert date objects to strings for JSON
-        for row in orders_by_date:
-            row['date'] = row['date'].isoformat() if row['date'] else None
-        for row in revenue_by_date:
-            row['date'] = row['date'].isoformat() if row['date'] else None
-            row['revenue'] = float(row['revenue']) if row['revenue'] else 0.0
-            
+        # Build date list from orders_by_date
+        dates = [r['date'] for r in orders_by_date]
+        orders_counts = [r['count'] for r in orders_by_date]
+        
+        # Build revenue list aligned to same dates
+        rev_map = {r['date']: float(r['revenue']) for r in revenue_by_date}
+        revenues = [rev_map.get(d, 0.0) for d in dates]
+        
+        # Build status dict
+        statuses = {r['status']: r['count'] for r in orders_by_status}
+
         return jsonify({
-            "orders_by_date": orders_by_date,
-            "revenue_by_date": revenue_by_date,
-            "orders_by_status": orders_by_status
+            "success": True,
+            "data": {
+                "dates": dates,
+                "orders": orders_counts,
+                "revenue": revenues,
+                "statuses": statuses
+            }
         })
     except Exception as e:
         if conn: conn.close()
