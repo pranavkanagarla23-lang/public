@@ -383,9 +383,14 @@ function getProductCardHTML(product) {
     
     // Check if store owner is logged in to append delete controls
     const adminDeleteButton = APP_STATE.adminLoggedIn ? `
-        <button class="btn btn-outline" onclick="event.stopPropagation(); adminDeleteProduct('${encodeURIComponent(product.id)}')" style="width:100%; margin-top:0.8rem; background-color:#FDF0F0; border-color:#D62F2F; color:#D62F2F; font-size:0.75rem; font-weight:700; padding:0.4rem;">
-            <i data-lucide="trash-2" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:2px;"></i> Delete Garment
-        </button>
+        <div style="display:flex; gap:0.5rem; margin-top:0.8rem;">
+            <button class="btn btn-outline" onclick="event.stopPropagation(); openEditForm('${encodeURIComponent(product.id)}')" style="flex:1; background-color:#F5F5F5; border-color:#999; color:#333; font-size:0.75rem; font-weight:700; padding:0.4rem;">
+                <i data-lucide="edit" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:2px;"></i> Edit
+            </button>
+            <button class="btn btn-outline" onclick="event.stopPropagation(); adminDeleteProduct('${encodeURIComponent(product.id)}')" style="flex:1; background-color:#FDF0F0; border-color:#D62F2F; color:#D62F2F; font-size:0.75rem; font-weight:700; padding:0.4rem;">
+                <i data-lucide="trash-2" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:2px;"></i> Delete
+            </button>
+        </div>
     ` : '';
     
     const mrp = parseFloat(product.mrp);
@@ -1333,34 +1338,25 @@ function handleAdminLogout() {
 }
 
 function switchAdminTab(tabName) {
-    const btnOrders = document.getElementById("btn-admin-tab-orders");
-    const btnAdd = document.getElementById("btn-admin-tab-add");
-    const contentOrders = document.getElementById("admin-tab-orders-content");
-    const contentAdd = document.getElementById("admin-tab-add-content");
+    // Hide all contents
+    document.querySelectorAll('.admin-tab-content').forEach(el => el.style.display = 'none');
+    // Remove active class from all nav buttons
+    document.querySelectorAll('.admin-nav-btn').forEach(el => el.classList.remove('active'));
 
-    if (tabName === 'orders') {
-        btnOrders.classList.add("active");
-        btnOrders.style.borderBottom = "2px solid var(--amazon-blue)";
-        btnOrders.style.color = "var(--text-primary)";
-        
-        btnAdd.classList.remove("active");
-        btnAdd.style.borderBottom = "none";
-        btnAdd.style.color = "var(--text-secondary)";
-        
-        contentOrders.style.display = "block";
-        contentAdd.style.display = "none";
+    // Show selected content and set active class
+    const contentId = `admin-tab-${tabName}-content`;
+    const btnId = `btn-admin-tab-${tabName}`;
+    
+    document.getElementById(contentId).style.display = 'block';
+    document.getElementById(btnId).classList.add('active');
+
+    // Trigger data loading if necessary
+    if (tabName === 'stats') {
+        loadStats();
+    } else if (tabName === 'orders') {
         renderAdminOrders();
-    } else {
-        btnAdd.classList.add("active");
-        btnAdd.style.borderBottom = "2px solid var(--amazon-blue)";
-        btnAdd.style.color = "var(--text-primary)";
-        
-        btnOrders.classList.remove("active");
-        btnOrders.style.borderBottom = "none";
-        btnOrders.style.color = "var(--text-secondary)";
-        
-        contentAdd.style.display = "block";
-        contentOrders.style.display = "none";
+    } else if (tabName === 'analytics') {
+        loadAnalytics();
     }
 }
 
@@ -1758,4 +1754,206 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// ==========================================================================
+// 11. Admin Features (Stats, Analytics, Export, Modals)
+// ==========================================================================
+
+async function loadStats() {
+    try {
+        const res = await fetch('/api/dashboard/stats');
+        const data = await res.json();
+        if(data.success) {
+            document.getElementById('stat-revenue').textContent = `₹${data.data.revenue.toFixed(2)}`;
+            document.getElementById('stat-total-orders').textContent = data.data.total_orders;
+            document.getElementById('stat-today-orders').textContent = data.data.today_orders;
+            document.getElementById('stat-low-stock').textContent = data.data.low_stock_items;
+        }
+    } catch (e) {
+        console.error("Failed to load stats:", e);
+    }
+}
+
+let revenueChartInstance, ordersChartInstance, statusChartInstance;
+async function loadAnalytics() {
+    try {
+        const res = await fetch('/api/analytics');
+        const data = await res.json();
+        if(data.success) {
+            const labels = data.data.dates;
+            const revData = data.data.revenue;
+            const ordData = data.data.orders;
+            const statuses = data.data.statuses;
+
+            if (revenueChartInstance) revenueChartInstance.destroy();
+            const revCtx = document.getElementById('revenueChart').getContext('2d');
+            revenueChartInstance = new Chart(revCtx, {
+                type: 'line',
+                data: { labels: labels, datasets: [{ label: 'Revenue (₹)', data: revData, borderColor: '#C5A880', backgroundColor: 'rgba(197, 168, 128, 0.2)', fill: true, tension: 0.4 }] },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            if (ordersChartInstance) ordersChartInstance.destroy();
+            const ordCtx = document.getElementById('ordersChart').getContext('2d');
+            ordersChartInstance = new Chart(ordCtx, {
+                type: 'bar',
+                data: { labels: labels, datasets: [{ label: 'Orders', data: ordData, backgroundColor: '#34495e', borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            if (statusChartInstance) statusChartInstance.destroy();
+            const statCtx = document.getElementById('statusChart').getContext('2d');
+            statusChartInstance = new Chart(statCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(statuses),
+                    datasets: [{ data: Object.values(statuses), backgroundColor: ['#FFB74D', '#81C784', '#e74c3c'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+    } catch (e) {
+        console.error("Failed to load analytics:", e);
+    }
+}
+
+let pendingConfirmAction = null;
+function showConfirmModal(action) {
+    pendingConfirmAction = action;
+    const modal = document.getElementById('confirm-modal-overlay');
+    const title = document.getElementById('confirm-title');
+    const msg = document.getElementById('confirm-message');
+    const icon = document.getElementById('confirm-icon');
+    const inputWrap = document.getElementById('confirm-input-wrapper');
+    const btn = document.getElementById('confirm-action-btn');
+
+    inputWrap.style.display = 'none';
+    document.getElementById('confirm-keyword-input').value = '';
+
+    if (action === 'publish') {
+        icon.innerHTML = '☁️';
+        title.textContent = 'Publish to Cloud';
+        msg.textContent = 'This will sync all local changes to the live cloud database. Continue?';
+        btn.textContent = 'Publish';
+        btn.className = 'btn btn-primary';
+    } else if (action === 'reset') {
+        icon.innerHTML = '⚠️';
+        title.textContent = 'Factory Reset';
+        msg.textContent = 'This will delete all custom products and restore default luxury garments. Type RESET to confirm.';
+        inputWrap.style.display = 'block';
+        btn.textContent = 'Reset Store';
+        btn.className = 'btn btn-primary';
+        btn.style.backgroundColor = '#ff4d4d';
+    } else if (action === 'clear-orders') {
+        icon.innerHTML = '🗑️';
+        title.textContent = 'Clear Orders';
+        msg.textContent = 'This will permanently delete all order history. Type CLEAR to confirm.';
+        inputWrap.style.display = 'block';
+        document.getElementById('confirm-keyword-input').placeholder = 'Type CLEAR to confirm';
+        btn.textContent = 'Clear History';
+        btn.className = 'btn btn-primary';
+        btn.style.backgroundColor = '#ff4d4d';
+    }
+
+    modal.style.display = 'flex';
+}
+
+function closeConfirmModal() {
+    document.getElementById('confirm-modal-overlay').style.display = 'none';
+    pendingConfirmAction = null;
+}
+
+const confirmBtn = document.getElementById('confirm-action-btn');
+if(confirmBtn) {
+    confirmBtn.addEventListener('click', async () => {
+        const input = document.getElementById('confirm-keyword-input').value.trim();
+        if (pendingConfirmAction === 'reset' && input !== 'RESET') return alert('Type RESET to confirm.');
+        if (pendingConfirmAction === 'clear-orders' && input !== 'CLEAR') return alert('Type CLEAR to confirm.');
+
+        closeConfirmModal();
+
+        if (pendingConfirmAction === 'publish') {
+            publishProductsToDb();
+        } else if (pendingConfirmAction === 'reset') {
+            await resetDbProducts();
+        } else if (pendingConfirmAction === 'clear-orders') {
+            await fetch('/api/orders/clear', { method: 'POST' });
+            renderAdminOrders();
+        }
+    });
+}
+
+function showExportModal() {
+    document.getElementById('export-modal-overlay').style.display = 'flex';
+}
+function closeExportModal() {
+    document.getElementById('export-modal-overlay').style.display = 'none';
+}
+function executeExportCSV() {
+    const start = document.getElementById('export-start-date').value;
+    const end = document.getElementById('export-end-date').value;
+    let url = '/api/orders/export';
+    if(start && end) url += `?start_date=${start}&end_date=${end}`;
+    window.location.href = url;
+    closeExportModal();
+}
+
+function openEditForm(productId) {
+    const product = PRODUCTS.find(p => p.id === productId);
+    if(!product) return;
+    
+    document.getElementById('edit-product-id').value = product.id;
+    document.getElementById('edit-product-title').value = product.title;
+    document.getElementById('edit-product-price').value = product.price;
+    document.getElementById('edit-product-stock').value = product.stock;
+    document.getElementById('edit-product-dept').value = product.department;
+    document.getElementById('edit-product-desc').value = product.desc;
+    
+    const catSelect = document.getElementById('edit-product-category');
+    catSelect.innerHTML = '';
+    const deptCats = [...new Set(PRODUCTS.filter(p => p.department === product.department).map(p => p.category))];
+    if(!deptCats.includes(product.category)) deptCats.push(product.category);
+    deptCats.forEach(c => {
+        catSelect.innerHTML += `<option value="${c}">${c}</option>`;
+    });
+    catSelect.value = product.category;
+
+    document.getElementById('edit-product-modal-overlay').style.display = 'flex';
+}
+
+function closeEditProductModal() {
+    document.getElementById('edit-product-modal-overlay').style.display = 'none';
+}
+
+async function handleEditProductSubmit(e) {
+    e.preventDefault();
+    const id = document.getElementById('edit-product-id').value;
+    const body = {
+        title: document.getElementById('edit-product-title').value,
+        price: parseFloat(document.getElementById('edit-product-price').value),
+        stock: parseInt(document.getElementById('edit-product-stock').value),
+        department: document.getElementById('edit-product-dept').value,
+        category: document.getElementById('edit-product-category').value,
+        desc: document.getElementById('edit-product-desc').value
+    };
+
+    try {
+        const res = await fetch(`/api/products/${encodeURIComponent(id)}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if(data.success) {
+            closeEditProductModal();
+            await loadProductsFromDb();
+            renderCatalog();
+            renderHomeFeatured();
+        } else {
+            alert('Failed to update product.');
+        }
+    } catch(e) {
+        console.error(e);
+    }
+}
 

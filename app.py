@@ -634,6 +634,192 @@ def clear_orders():
     conn.close()
     return jsonify({"success": True, "message": "Order history cleared!"})
 
+# --- NEW DASHBOARD ENDPOINTS ---
+
+# GET DASHBOARD STATS
+@app.route('/api/dashboard/stats', methods=['GET'])
+@admin_required
+def get_dashboard_stats():
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # Total orders
+        cursor.execute("SELECT COUNT(*) as total FROM orders")
+        total_orders = cursor.fetchone()['total']
+        
+        # Today's orders
+        cursor.execute("SELECT COUNT(*) as today FROM orders WHERE created_at >= CURRENT_DATE")
+        today_orders = cursor.fetchone()['today']
+        
+        # Total revenue
+        cursor.execute("SELECT COALESCE(SUM(total_amount), 0) as revenue FROM orders")
+        total_revenue = float(cursor.fetchone()['revenue'])
+        
+        # Low stock items (stock < 5)
+        cursor.execute("SELECT COUNT(*) as low_stock FROM products WHERE stock < 5")
+        low_stock = cursor.fetchone()['low_stock']
+        
+        conn.close()
+        return jsonify({
+            "total_orders": total_orders,
+            "today_orders": today_orders,
+            "total_revenue": total_revenue,
+            "low_stock_items": low_stock
+        })
+    except Exception as e:
+        if conn: conn.close()
+        return jsonify({"success": False, "message": str(e)}), 500
+
+# UPDATE PRODUCT DETAILS
+@app.route('/api/products/<id>', methods=['PUT'])
+@admin_required
+def update_product(id):
+    data = request.get_json()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('''
+            UPDATE products 
+            SET title = %s, department = %s, category = %s, price = %s, mrp = %s, stock = %s, "desc" = %s, details = %s, sizes = %s
+            WHERE id = %s
+        ''', (
+            data.get('title'), data.get('department'), data.get('category'), 
+            data.get('price'), data.get('mrp'), data.get('stock'), 
+            data.get('desc'), data.get('details'), data.get('sizes'), id
+        ))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "message": "Product updated successfully"})
+    except Exception as e:
+        if conn: conn.rollback()
+        conn.close()
+        return jsonify({"success": False, "message": str(e)}), 500
+
+# QUICK UPDATE STOCK
+@app.route('/api/products/<id>/stock', methods=['PATCH'])
+@admin_required
+def update_product_stock(id):
+    data = request.get_json()
+    new_stock = data.get('stock')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("UPDATE products SET stock = %s WHERE id = %s", (new_stock, id))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "message": "Stock updated successfully"})
+    except Exception as e:
+        if conn: conn.rollback()
+        conn.close()
+        return jsonify({"success": False, "message": str(e)}), 500
+
+# UPDATE ORDER STATUS
+@app.route('/api/orders/<id>/status', methods=['PATCH'])
+@admin_required
+def update_order_status(id):
+    data = request.get_json()
+    new_status = data.get('status')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("UPDATE orders SET status = %s WHERE order_id = %s", (new_status, id))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "message": "Order status updated successfully"})
+    except Exception as e:
+        if conn: conn.rollback()
+        conn.close()
+        return jsonify({"success": False, "message": str(e)}), 500
+
+# EXPORT ORDERS TO CSV
+@app.route('/api/orders/export', methods=['GET'])
+@admin_required
+def export_orders():
+    # In a real app, you might filter by date here using request.args
+    start_date = request.args.get('start')
+    end_date = request.args.get('end')
+    
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        if start_date and end_date:
+            cursor.execute("SELECT * FROM orders WHERE created_at >= %s AND created_at <= %s ORDER BY created_at DESC", (start_date, end_date))
+        else:
+            cursor.execute("SELECT * FROM orders ORDER BY created_at DESC")
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        orders = []
+        for r in rows:
+            orders.append({
+                "order_id": r["order_id"],
+                "customer_name": r["customer_name"],
+                "customer_phone": r["customer_phone"],
+                "delivery_address": r["delivery_address"],
+                "order_details": r["order_details"],
+                "total_amount": float(r["total_amount"]) if r["total_amount"] is not None else 0.0,
+                "status": r["status"],
+                "created_at": r["created_at"].isoformat() if r["created_at"] else None
+            })
+        return jsonify(orders)
+    except Exception as e:
+        if conn: conn.close()
+        return jsonify({"success": False, "message": str(e)}), 500
+
+# GET ANALYTICS DATA
+@app.route('/api/analytics', methods=['GET'])
+@admin_required
+def get_analytics():
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # 1. Orders over last 30 days
+        cursor.execute('''
+            SELECT DATE(created_at) as date, COUNT(*) as count 
+            FROM orders 
+            WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+            GROUP BY DATE(created_at) 
+            ORDER BY DATE(created_at)
+        ''')
+        orders_by_date = cursor.fetchall()
+        
+        # 2. Revenue over last 30 days
+        cursor.execute('''
+            SELECT DATE(created_at) as date, SUM(total_amount) as revenue 
+            FROM orders 
+            WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+            GROUP BY DATE(created_at) 
+            ORDER BY DATE(created_at)
+        ''')
+        revenue_by_date = cursor.fetchall()
+
+        # 3. Orders by Status
+        cursor.execute('''
+            SELECT status, COUNT(*) as count 
+            FROM orders 
+            GROUP BY status
+        ''')
+        orders_by_status = cursor.fetchall()
+
+        conn.close()
+        
+        # Convert date objects to strings for JSON
+        for row in orders_by_date:
+            row['date'] = row['date'].isoformat() if row['date'] else None
+        for row in revenue_by_date:
+            row['date'] = row['date'].isoformat() if row['date'] else None
+            row['revenue'] = float(row['revenue']) if row['revenue'] else 0.0
+            
+        return jsonify({
+            "orders_by_date": orders_by_date,
+            "revenue_by_date": revenue_by_date,
+            "orders_by_status": orders_by_status
+        })
+    except Exception as e:
+        if conn: conn.close()
+        return jsonify({"success": False, "message": str(e)}), 500
+
 # 9. CUSTOMER ORDER TRACKING
 @app.route('/api/my/orders', methods=['GET'])
 def my_orders():
