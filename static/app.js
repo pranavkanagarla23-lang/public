@@ -383,12 +383,12 @@ function getProductCardHTML(product) {
     
     // Check if store owner is logged in to append delete controls
     const adminDeleteButton = APP_STATE.adminLoggedIn ? `
-        <div style="display:flex; gap:0.5rem; margin-top:0.8rem;">
-            <button class="btn btn-outline" onclick="event.stopPropagation(); openEditForm('${product.id.replace(/'/g, "\\'")  }')" style="flex:1; background-color:#F5F5F5; border-color:#999; color:#333; font-size:0.75rem; font-weight:700; padding:0.4rem;">
-                <i data-lucide="edit" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:2px;"></i> Edit
+        <div style="display:flex; gap:0.5rem; margin-top:0.8rem; padding-top:0.7rem; border-top:1px solid #e0e0e0;">
+            <button class="btn" onclick="event.stopPropagation(); openEditForm('${product.id.replace(/'/g, "\\'")  }')" style="flex:1; background:#2563EB; border:2px solid #1d4ed8; color:#fff; font-size:0.75rem; font-weight:700; padding:0.45rem; border-radius:6px; cursor:pointer;">
+                <i data-lucide="edit" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:3px;"></i> Edit
             </button>
-            <button class="btn btn-outline" onclick="event.stopPropagation(); adminDeleteProduct('${product.id.replace(/'/g, "\\'")  }')" style="flex:1; background-color:#FDF0F0; border-color:#D62F2F; color:#D62F2F; font-size:0.75rem; font-weight:700; padding:0.4rem;">
-                <i data-lucide="trash-2" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:2px;"></i> Delete
+            <button class="btn" onclick="event.stopPropagation(); adminDeleteProduct('${product.id.replace(/'/g, "\\'")  }')" style="flex:1; background:#DC2626; border:2px solid #b91c1c; color:#fff; font-size:0.75rem; font-weight:700; padding:0.45rem; border-radius:6px; cursor:pointer;">
+                <i data-lucide="trash-2" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:3px;"></i> Delete
             </button>
         </div>
     ` : '';
@@ -1860,36 +1860,81 @@ async function loadAnalytics() {
         }
 
         // ── Charts ─────────────────────────────────────────────────────
-        if (analyticsData.success) {
-            const labels = analyticsData.data.dates;
-            const revData = analyticsData.data.revenue;
-            const ordData = analyticsData.data.orders;
-            const statuses = analyticsData.data.statuses;
+        // Use real data if available, else show mock monthly data so chart is never blank
+        const MOCK_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        let labels, revData, ordData, statuses;
 
-            if (revenueChartInstance) revenueChartInstance.destroy();
-            const revCtx = document.getElementById('revenueChart').getContext('2d');
-            revenueChartInstance = new Chart(revCtx, {
-                type: 'line',
-                data: { labels, datasets: [{ label: 'Revenue (₹)', data: revData, borderColor: '#C5A880', backgroundColor: 'rgba(197,168,128,0.15)', fill: true, tension: 0.4, pointRadius: 3 }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => '₹'+v } } } }
-            });
-
-            if (ordersChartInstance) ordersChartInstance.destroy();
-            const ordCtx = document.getElementById('ordersChart').getContext('2d');
-            ordersChartInstance = new Chart(ordCtx, {
-                type: 'bar',
-                data: { labels, datasets: [{ label: 'Orders', data: ordData, backgroundColor: '#34495e', borderRadius: 4 }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
-            });
-
-            if (statusChartInstance) statusChartInstance.destroy();
-            const statCtx = document.getElementById('statusChart').getContext('2d');
-            statusChartInstance = new Chart(statCtx, {
-                type: 'doughnut',
-                data: { labels: Object.keys(statuses), datasets: [{ data: Object.values(statuses), backgroundColor: ['#FFB74D', '#81C784', '#e74c3c'] }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } } }
-            });
+        if (analyticsData.success && analyticsData.data.dates && analyticsData.data.dates.length > 0) {
+            labels  = analyticsData.data.dates;
+            revData = analyticsData.data.revenue;
+            ordData = analyticsData.data.orders;
+            statuses = analyticsData.data.statuses;
+        } else {
+            // Fallback: show last 6 months with sample trend so chart is visible
+            const now = new Date();
+            labels   = Array.from({length:6}, (_,i) => MOCK_MONTHS[(now.getMonth()-5+i+12)%12]);
+            revData  = [0, 0, 0, 0, 0, 0];
+            ordData  = [0, 0, 0, 0, 0, 0];
+            statuses = { Pending: 0, Delivered: 0 };
         }
+
+        // Revenue Line Chart
+        const revCanvas = document.getElementById('revenueChart');
+        revCanvas.style.height = '180px';
+        if (revenueChartInstance) revenueChartInstance.destroy();
+        revenueChartInstance = new Chart(revCanvas.getContext('2d'), {
+            type: 'line',
+            data: { labels, datasets: [{
+                label: 'Revenue (₹)', data: revData,
+                borderColor: '#0d9488', backgroundColor: 'rgba(13,148,136,0.1)',
+                fill: true, tension: 0.4, pointRadius: 4,
+                pointBackgroundColor: '#0d9488', borderWidth: 3
+            }]},
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ₹' + ctx.parsed.y.toFixed(2) } } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: '#6b7280' } },
+                    y: { beginAtZero: true, grid: { color: '#f0f0f0' }, ticks: { color: '#6b7280', callback: v => '₹'+v } }
+                }
+            }
+        });
+
+        // Orders Bar Chart
+        const ordCanvas = document.getElementById('ordersChart');
+        ordCanvas.style.height = '180px';
+        if (ordersChartInstance) ordersChartInstance.destroy();
+        ordersChartInstance = new Chart(ordCanvas.getContext('2d'), {
+            type: 'bar',
+            data: { labels, datasets: [{
+                label: 'Orders', data: ordData,
+                backgroundColor: 'rgba(37,99,235,0.75)', borderRadius: 5, borderWidth: 0
+            }]},
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: '#6b7280' } },
+                    y: { beginAtZero: true, grid: { color: '#f0f0f0' }, ticks: { stepSize: 1, color: '#6b7280' } }
+                }
+            }
+        });
+
+        // Status Doughnut
+        const statCanvas = document.getElementById('statusChart');
+        statCanvas.style.height = '150px';
+        if (statusChartInstance) statusChartInstance.destroy();
+        const statusLabels = Object.keys(statuses);
+        const statusValues = Object.values(statuses);
+        statusChartInstance = new Chart(statCanvas.getContext('2d'), {
+            type: 'doughnut',
+            data: { labels: statusLabels, datasets: [{ data: statusValues.length ? statusValues : [1], backgroundColor: statusValues.length ? ['#FFB74D','#81C784','#e74c3c'] : ['#e5e7eb'] }] },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 10 } } }
+            }
+        });
+
     } catch (e) {
         console.error('Failed to load analytics:', e);
     }
